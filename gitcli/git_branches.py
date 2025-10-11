@@ -2,7 +2,7 @@ import os
 import time
 from colorama import Fore
 from yaspin import yaspin
-from helpers import run_command, get_current_branch, sanitize_name
+from .helpers import run_command, get_current_branch, sanitize_name
 
 def switch_branch():
     print(Fore.CYAN + "\n🔀 Available branches:")

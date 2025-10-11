@@ -3,7 +3,7 @@ import os
 import time
 from colorama import Fore
 from yaspin import yaspin
-from helpers import (
+from .helpers import (
     run_command, send_notification, get_current_branch,
     has_staged_changes, has_unstaged_changes, has_any_changes, has_remote
 )

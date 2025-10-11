@@ -8,16 +8,16 @@ from colorama import Fore, Style, init
 from yaspin import yaspin
 
 # Import modules
-from helpers import run_command, get_current_branch, get_repo_name
-from git_operations import (
+from .helpers import run_command, get_current_branch, get_repo_name
+from .git_operations import (
     commit_changes, push_changes, pull_changes, stage_changes,
     show_status, show_log, show_diff, show_diff_staged,
     sync_changes, fetch_changes, clone_repository, quick_push
 )
-from git_branches import (
+from .git_branches import (
     switch_branch, add_branch, delete_branch, rename_branch, list_branches
 )
-from git_advanced import manage_remotes, reset_commit, amend_commit
+from .git_advanced import manage_remotes, reset_commit, amend_commit
 
 # Initialize colorama
 init(autoreset=True)

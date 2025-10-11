@@ -2,7 +2,7 @@ import os
 import time
 from colorama import Fore
 from yaspin import yaspin
-from helpers import run_command, has_unstaged_changes, has_staged_changes
+from .helpers import run_command, has_unstaged_changes, has_staged_changes
 
 def manage_remotes():
     """Manage git remotes"""
