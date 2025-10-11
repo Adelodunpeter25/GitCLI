@@ -95,6 +95,23 @@ def show_prompt():
     branch = get_current_branch()
     return Fore.MAGENTA + f"[{branch}] " + Fore.CYAN + "> "
 
+def normalize_command(cmd):
+    """Normalize command to handle various formats (listbranch -> list-branch)"""
+    cmd = cmd.strip().lower().replace(" ", "-")
+    
+    # Map common variations to standard commands
+    command_map = {
+        "listbranch": "list-branch",
+        "switchbranch": "switch-branch",
+        "addbranch": "add-branch",
+        "deletebranch": "delete-branch",
+        "renamebranch": "rename-branch",
+        "quickpush": "quick-push",
+        "diffstaged": "diff-staged",
+    }
+    
+    return command_map.get(cmd, cmd)
+
 def execute_command(command):
     """Execute a single command"""
     if command == "commit":
@@ -150,7 +167,7 @@ def main():
             print(Fore.RED + "❌ Not a git repository.")
             sys.exit(1)
         
-        command = sys.argv[1].lower().replace(" ", "-")
+        command = normalize_command(sys.argv[1])
         
         # Execute command directly
         if execute_command(command):
@@ -195,7 +212,7 @@ def main():
     show_welcome()
     
     while True:
-        choice = input(show_prompt()).strip().lower().replace(" ", "-")
+        choice = normalize_command(input(show_prompt()))
         
         if choice == "quit":
             print(Fore.CYAN + "👋 Exiting GitCLI...")

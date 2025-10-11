@@ -1,6 +1,6 @@
 """GitCLI - Git Operations Automation Tool"""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Adelodun Peter"
 __description__ = "User-friendly Git CLI automation tool with interactive menus and visual feedback"
 
