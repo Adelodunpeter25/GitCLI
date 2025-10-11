@@ -1,4 +1,4 @@
-#!/Users/techclub/scripts/automation/venv/bin/python3
+#!/usr/bin/env python3
 import subprocess
 import os
 import sys
@@ -39,8 +39,12 @@ def send_notification(title, message):
         elif system == "Linux":
             os.system(f'notify-send "{title}" "{message}"')
         elif system == "Windows":
-            # Windows notification (requires win10toast or similar)
-            pass
+            try:
+                from win10toast import ToastNotifier
+                toaster = ToastNotifier()
+                toaster.show_toast(title, message, duration=3, threaded=True)
+            except ImportError:
+                pass  # Silently skip if win10toast not installed
     except:
         pass
 
@@ -132,13 +136,28 @@ def push_changes():
             return
     with yaspin(text=f"Pushing branch '{branch}'...", color="magenta") as spinner:
         time.sleep(0.7)
-        result = run_command("git push", capture_output=False)
-        if result is not None:
+        result = subprocess.run("git push", shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
             spinner.ok("🚀")
             print(Fore.GREEN + f"✅ Changes pushed to '{branch}'!")
             send_notification("GitCLI", f"Push to '{branch}' complete!")
         else:
             spinner.fail("❌")
+            if "rejected" in result.stderr and "non-fast-forward" in result.stderr:
+                print(Fore.YELLOW + "\n⚠️  Push rejected: Your branch is behind the remote branch.")
+                force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
+                if force == "yes":
+                    with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
+                        time.sleep(0.7)
+                        force_result = run_command("git push --force", capture_output=False)
+                        if force_result is not None:
+                            spinner2.ok("🚀")
+                            print(Fore.GREEN + f"✅ Force pushed to '{branch}'!")
+                            send_notification("GitCLI", f"Force push to '{branch}' complete!")
+                        else:
+                            spinner2.fail("❌")
+                else:
+                    print(Fore.CYAN + "🚫 Force push canceled.")
 
 def pull_changes():
     branch = get_current_branch()
@@ -199,6 +218,22 @@ def show_status():
 def show_log():
     print(Fore.CYAN + "\n📜 Recent Commits:\n" + "-"*30)
     os.system("git log --oneline --graph --decorate -10")
+
+def show_diff():
+    """Show unstaged changes"""
+    if not has_unstaged_changes():
+        print(Fore.YELLOW + "⚠️  No unstaged changes to show.")
+        return
+    print(Fore.CYAN + "\n📝 Unstaged Changes:\n" + "-"*30)
+    os.system("git diff")
+
+def show_diff_staged():
+    """Show staged changes"""
+    if not has_staged_changes():
+        print(Fore.YELLOW + "⚠️  No staged changes to show.")
+        return
+    print(Fore.CYAN + "\n📝 Staged Changes:\n" + "-"*30)
+    os.system("git diff --cached")
 
 def switch_branch():
     print(Fore.CYAN + "\n🔀 Available branches:")
@@ -283,6 +318,101 @@ def list_branches():
     print(Fore.CYAN + "\n🌿 Branches:\n" + "-"*30)
     os.system("git branch --all")
 
+def sync_changes():
+    """Pull then push changes"""
+    branch = get_current_branch()
+    
+    if not has_remote():
+        print(Fore.RED + "❌ No remote repository configured.")
+        return
+    
+    # Pull first
+    print(Fore.CYAN + f"\n🔄 Syncing '{branch}': Pull → Push")
+    with yaspin(text="Pulling latest changes...", color="cyan") as spinner:
+        time.sleep(0.7)
+        result = subprocess.run("git pull", shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            spinner.fail("❌")
+            print(Fore.RED + "❌ Pull failed. Resolve conflicts before syncing.")
+            return
+        spinner.ok("✅")
+    print(Fore.GREEN + "✅ Pull complete.")
+    
+    # Check if there's anything to push
+    if not has_any_changes():
+        # Check if local is ahead of remote
+        ahead = run_command("git rev-list --count @{u}..HEAD")
+        if ahead and int(ahead) > 0:
+            print(Fore.CYAN + f"\n📤 Local branch is {ahead} commit(s) ahead. Pushing...")
+        else:
+            print(Fore.YELLOW + "⚠️  Already up to date. Nothing to push.")
+            return
+    
+    # Push
+    with yaspin(text=f"Pushing to '{branch}'...", color="magenta") as spinner:
+        time.sleep(0.7)
+        result = subprocess.run("git push", shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            spinner.ok("🚀")
+            print(Fore.GREEN + f"✅ Sync complete!")
+            send_notification("GitCLI", f"Sync to '{branch}' complete!")
+        else:
+            spinner.fail("❌")
+
+def fetch_changes():
+    """Fetch updates from remote without merging"""
+    if not has_remote():
+        print(Fore.RED + "❌ No remote repository configured.")
+        return
+    
+    print(Fore.CYAN + "\n📥 Fetching updates from remote...")
+    with yaspin(text="Fetching...", color="cyan") as spinner:
+        time.sleep(0.7)
+        result = run_command("git fetch", capture_output=False)
+        if result is not None:
+            spinner.ok("✅")
+            print(Fore.GREEN + "✅ Fetch complete.")
+            
+            # Show if branch is behind
+            branch = get_current_branch()
+            behind = run_command("git rev-list --count HEAD..@{u}")
+            if behind and int(behind) > 0:
+                print(Fore.YELLOW + f"⚠️  Your branch is {behind} commit(s) behind remote.")
+                print(Fore.CYAN + "💡 Use 'pull' to merge remote changes.")
+        else:
+            spinner.fail("❌")
+
+def clone_repository():
+    """Clone a repository interactively"""
+    print(Fore.CYAN + "\n📦 Clone Repository")
+    url = input("Enter repository URL: ").strip()
+    if not url:
+        print(Fore.RED + "❌ URL cannot be empty.")
+        return
+    
+    folder = input("Enter folder name (leave empty for default): ").strip()
+    
+    cmd = f"git clone {url}"
+    if folder:
+        cmd += f" {folder}"
+    
+    print(Fore.CYAN + f"\n⬇️  Cloning repository...")
+    with yaspin(text="Cloning...", color="cyan") as spinner:
+        time.sleep(0.7)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            spinner.ok("✅")
+            print(Fore.GREEN + "✅ Repository cloned successfully!")
+            if folder:
+                print(Fore.CYAN + f"💡 Navigate to folder: cd {folder}")
+            else:
+                # Extract folder name from URL
+                repo_name = url.rstrip('/').split('/')[-1].replace('.git', '')
+                print(Fore.CYAN + f"💡 Navigate to folder: cd {repo_name}")
+        else:
+            spinner.fail("❌")
+            print(Fore.RED + f"❌ Clone failed: {result.stderr}")
+
 def quick_push():
     """Stage all, commit, and push in one command"""
     branch = get_current_branch()
@@ -322,13 +452,28 @@ def quick_push():
     # Push
     with yaspin(text=f"Pushing to '{branch}'...", color="magenta") as spinner:
         time.sleep(0.7)
-        result = run_command("git push", capture_output=False)
-        if result is not None:
+        result = subprocess.run("git push", shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
             spinner.ok("🚀")
             print(Fore.GREEN + f"✅ Successfully pushed to '{branch}'!")
             send_notification("GitCLI", f"Quick push to '{branch}' complete!")
         else:
             spinner.fail("❌")
+            if "rejected" in result.stderr and "non-fast-forward" in result.stderr:
+                print(Fore.YELLOW + "\n⚠️  Push rejected: Your branch is behind the remote branch.")
+                force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
+                if force == "yes":
+                    with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
+                        time.sleep(0.7)
+                        force_result = run_command("git push --force", capture_output=False)
+                        if force_result is not None:
+                            spinner2.ok("🚀")
+                            print(Fore.GREEN + f"✅ Force pushed to '{branch}'!")
+                            send_notification("GitCLI", f"Force push to '{branch}' complete!")
+                        else:
+                            spinner2.fail("❌")
+                else:
+                    print(Fore.CYAN + "🚫 Force push canceled.")
 
 def manage_remotes():
     """Manage git remotes"""
@@ -496,9 +641,10 @@ def amend_commit():
 # Tab completion
 # -----------------------------
 COMMANDS = [
-    "commit", "push", "pull", "status", "stage", "log", "switch-branch",
-    "add-branch", "delete-branch", "rename-branch", "list-branch", 
-    "quick-push", "qp", "remotes", "reset", "amend", "help", "quit"
+    "commit", "push", "pull", "status", "stage", "log", "diff", "diff-staged",
+    "switch-branch", "add-branch", "delete-branch", "rename-branch", "list-branch", 
+    "quick-push", "qp", "sync", "fetch", "clone", "remotes", "reset", 
+    "amend", "help", "quit"
 ]
 
 def completer(text, state):
@@ -506,8 +652,11 @@ def completer(text, state):
     return matches[state] if state < len(matches) else None
 
 readline.set_completer(completer)
-# macOS readline/libedit fix
-readline.parse_and_bind("bind ^I rl_complete")
+# Cross-platform readline configuration
+if platform.system() == "Windows":
+    readline.parse_and_bind("tab: complete")
+else:
+    readline.parse_and_bind("bind ^I rl_complete")
 
 # -----------------------------
 # Menu display
@@ -535,15 +684,20 @@ def show_help():
         ("commit", "Commit staged changes"),
         ("push", "Push changes to remote"),
         ("pull", "Pull latest changes"),
+        ("sync", "Pull then push in one command"),
+        ("fetch", "Fetch updates without merging"),
         ("status", "Show git status"),
         ("stage", "Stage changes for commit"),
         ("log", "View commit history"),
+        ("diff", "Show unstaged changes"),
+        ("diff-staged", "Show staged changes"),
         ("switch-branch", "Switch to another branch"),
         ("add-branch", "Create new branch"),
         ("delete-branch", "Delete a branch"),
         ("rename-branch", "Rename a branch"),
         ("list-branch", "List all branches"),
         ("quick-push / qp", "Stage, commit & push in one go"),
+        ("clone", "Clone a repository"),
         ("remotes", "Manage remote repositories"),
         ("reset", "Reset to previous commit"),
         ("amend", "Amend last commit"),
@@ -565,9 +719,93 @@ def show_prompt():
 # Main loop
 # -----------------------------
 def main():
+    # Check for command-line arguments
+    if len(sys.argv) > 1:
+        if not os.path.isdir(".git") and sys.argv[1] not in ["clone", "help"]:
+            print(Fore.RED + "❌ Not a git repository.")
+            sys.exit(1)
+        
+        command = sys.argv[1].lower().replace(" ", "-")
+        
+        # Execute command directly
+        if command == "commit":
+            commit_changes()
+        elif command == "push":
+            push_changes()
+        elif command == "pull":
+            pull_changes()
+        elif command == "sync":
+            sync_changes()
+        elif command == "fetch":
+            fetch_changes()
+        elif command == "clone":
+            clone_repository()
+        elif command == "status":
+            show_status()
+        elif command == "stage":
+            stage_changes()
+        elif command == "log":
+            show_log()
+        elif command == "diff":
+            show_diff()
+        elif command == "diff-staged":
+            show_diff_staged()
+        elif command in ["quick-push", "qp"]:
+            quick_push()
+        elif command == "remotes":
+            manage_remotes()
+        elif command == "reset":
+            reset_commit()
+        elif command == "amend":
+            amend_commit()
+        elif command == "switch-branch":
+            switch_branch()
+        elif command == "add-branch":
+            add_branch()
+        elif command == "delete-branch":
+            delete_branch()
+        elif command == "rename-branch":
+            rename_branch()
+        elif command == "list-branch":
+            list_branches()
+        elif command == "help":
+            show_help()
+        else:
+            print(Fore.RED + f"❌ Unknown command: {command}")
+            print(Fore.CYAN + "💡 Type 'gitcli help' to see available commands.")
+            sys.exit(1)
+        sys.exit(0)
+    
+    # Interactive mode
     if not os.path.isdir(".git"):
-        print(Fore.RED + "❌ Not a git repository. Navigate into one first.")
-        sys.exit(1)
+        print(Fore.YELLOW + "⚠️  Not a git repository.")
+        print(Fore.CYAN + "Options:")
+        print("  1. Initialize git in current directory (git init)")
+        print("  2. Clone a repository")
+        print("  3. Exit")
+        
+        choice = input("\nChoose option (1-3): ").strip()
+        
+        if choice == "1":
+            confirm = input(f"Initialize git in {os.getcwd()}? (y/N): ").lower()
+            if confirm == "y":
+                with yaspin(text="Initializing git repository...", color="cyan") as spinner:
+                    time.sleep(0.5)
+                    result = run_command("git init", capture_output=False)
+                    if result is not None:
+                        spinner.ok("✅")
+                        print(Fore.GREEN + "✅ Git repository initialized!")
+                    else:
+                        spinner.fail("❌")
+                        sys.exit(1)
+            else:
+                print(Fore.CYAN + "🚫 Initialization canceled.")
+                sys.exit(0)
+        elif choice == "2":
+            clone_repository()
+            sys.exit(0)
+        else:
+            sys.exit(0)
     
     # Show welcome screen once
     show_welcome()
@@ -581,12 +819,22 @@ def main():
             push_changes()
         elif choice == "pull":
             pull_changes()
+        elif choice == "sync":
+            sync_changes()
+        elif choice == "fetch":
+            fetch_changes()
+        elif choice == "clone":
+            clone_repository()
         elif choice == "status":
             show_status()
         elif choice == "stage":
             stage_changes()
         elif choice == "log":
             show_log()
+        elif choice == "diff":
+            show_diff()
+        elif choice == "diff-staged":
+            show_diff_staged()
         elif choice in ["quick-push", "qp"]:
             quick_push()
         elif choice == "remotes":
