@@ -45,11 +45,9 @@ def push_changes():
         print(Fore.RED + "❌ No remote repository configured.")
         return
     
-    if not has_staged_changes() and not has_unstaged_changes():
-        print(Fore.YELLOW + "⚠️  No changes to push.")
-        return
-    if not has_staged_changes():
-        print(Fore.YELLOW + "⚠️  No staged commits.")
+    # Check if there are uncommitted changes that need to be committed first
+    if has_unstaged_changes() and not has_staged_changes():
+        print(Fore.YELLOW + "⚠️  You have unstaged changes.")
         choice = input("Do you want to stage all changes and commit before pushing? (y/N): ").lower()
         if choice == "y":
             run_command("git add .", capture_output=False)
@@ -66,6 +64,8 @@ def push_changes():
         else:
             print(Fore.CYAN + "🚫 Push canceled.")
             return
+    
+    # Now push (will push any commits that are ahead of remote)
     with yaspin(text=f"Pushing branch '{branch}'...", color="magenta") as spinner:
         time.sleep(0.7)
         result = subprocess.run("git push", shell=True, capture_output=True, text=True)
