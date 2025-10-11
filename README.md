@@ -1,4 +1,4 @@
-# GitCLI - Git Operations Automator
+# GitCLI - Git Operations Automation
 
 GitCLI is a user-friendly command-line tool for Git that simplifies everyday operations. Perfect for developers who want powerful Git functionality without the complexity.
 

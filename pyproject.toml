@@ -3,13 +3,13 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gitcli-automator"
-version = "1.0.0"
-description = "User-friendly Git CLI automator tool with interactive menus and visual feedback"
+name = "gitcli-automation"
+version = "1.0.1"
+description = "User-friendly command-line tool for Git that simplifies everyday operations. Perfect for developers who want powerful Git functionality without the complexity."
 readme = "README.md"
 requires-python = ">=3.7"
 license = {text = "MIT"}
-keywords = ["git", "cli", "automator", "tool", "interactive", "version-control"]
+keywords = ["git", "cli", "automation", "tool", "interactive", "version-control"]
 authors = [
     {name = "Adelodun Peter", email = "adelodunpeter24@gmail.com"}
 ]
