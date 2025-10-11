@@ -47,7 +47,7 @@ def show_welcome():
     branch = get_current_branch()
     
     print("\n" + Fore.MAGENTA + Style.BRIGHT + "=" * 60)
-    print(Fore.MAGENTA + Style.BRIGHT + "  🚀 GitCLI - Git Operations Automation")
+    print(Fore.MAGENTA + Style.BRIGHT + "  🚀 GitCLI - Git Operations Automator")
     print(Fore.MAGENTA + Style.BRIGHT + "=" * 60)
     print(Fore.CYAN + f"  Repository: " + Fore.WHITE + f"{repo}")
     print(Fore.CYAN + f"  Branch: " + Fore.WHITE + f"{branch}")

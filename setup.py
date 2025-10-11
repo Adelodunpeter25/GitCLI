@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="gitcli-automation",
-    version="0.1.1",
+    name="gitcli-automator",
+    version="1.0.0",
     author="Adelodunpeter",
     author_email="adelodunpeter24@gmail.com",
-    description="User-friendly Git CLI automation tool with interactive menus and visual feedback",
+    description="User-friendly Git CLI automator tool with interactive menus and visual feedback",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Adelodunpeter25/GitCLI",
@@ -42,7 +42,7 @@ setup(
             "gitcli=gitcli.cli:main",
         ],
     },
-    keywords="git cli automation tool interactive version-control",
+    keywords="git cli automator tool interactive version-control",
     project_urls={
         "Bug Reports": "https://github.com/Adelodunpeter25/GitCLI/issues",
         "Source": "https://github.com/Adelodunpeter25/GitCLI",
