@@ -163,11 +163,12 @@ def execute_command(command):
 def main():
     # Check for command-line arguments
     if len(sys.argv) > 1:
-        if not os.path.isdir(".git") and sys.argv[1] not in ["clone", "help"]:
+        # Join all arguments to handle "gitcli list branch" or "gitcli quick push"
+        command = normalize_command(" ".join(sys.argv[1:]))
+        
+        if not os.path.isdir(".git") and command not in ["clone", "help"]:
             print(Fore.RED + "❌ Not a git repository.")
             sys.exit(1)
-        
-        command = normalize_command(sys.argv[1])
         
         # Execute command directly
         if execute_command(command):
