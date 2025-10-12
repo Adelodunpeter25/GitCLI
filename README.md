@@ -105,7 +105,6 @@ gitcli switch-branch main
 
 - Confirmation prompts for destructive operations
 - Branch protection (can't delete current branch)
-- Force push requires typing "yes"
 - Remote validation before push/pull
 
 ## Contributing
