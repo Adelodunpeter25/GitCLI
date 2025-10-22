@@ -12,12 +12,14 @@ def run_command(cmd, capture_output=True):
         )
         return result.stdout.strip() if capture_output else ""
     except subprocess.CalledProcessError as e:
-        print(Fore.RED + f"⚠️  Command failed: {cmd}")
-        if e.stdout:
-            print(Fore.RED + e.stdout)
-        if e.stderr:
-            print(Fore.RED + e.stderr)
+        if capture_output:
+            error_msg = e.stderr.strip() if e.stderr else str(e)
+            print(Fore.RED + f"❌ Command failed: {error_msg}")
         return None
+
+def display_command(cmd):
+    """Run a command and display output directly (for status, log, diff, etc.)"""
+    subprocess.run(cmd, shell=True)
 
 def send_notification(title, message):
     """Send system notification (cross-platform)."""

@@ -1,8 +1,7 @@
 import os
-import time
 from colorama import Fore
 from yaspin import yaspin
-from .helpers import run_command, has_unstaged_changes, has_staged_changes
+from .helpers import run_command, has_unstaged_changes, has_staged_changes, display_command
 
 def manage_remotes():
     """Manage git remotes"""
@@ -16,7 +15,7 @@ def manage_remotes():
     
     if choice == "1":
         print(Fore.CYAN + "\n📋 Remotes:\n" + "-"*30)
-        os.system("git remote -v")
+        display_command("git remote -v")
     elif choice == "2":
         print(Fore.CYAN + "\n➕ Add Remote")
         name = input("Enter remote name (e.g., origin): ").strip()
@@ -31,7 +30,7 @@ def manage_remotes():
         print(Fore.GREEN + f"✅ Remote '{name}' added successfully.")
     elif choice == "3":
         print(Fore.CYAN + "\n➖ Remove Remote")
-        os.system("git remote -v")
+        display_command("git remote -v")
         name = input("\nEnter remote name to remove: ").strip()
         if not name:
             print(Fore.RED + "❌ Remote name cannot be empty.")
@@ -44,7 +43,7 @@ def manage_remotes():
         print(Fore.GREEN + f"✅ Remote '{name}' removed successfully.")
     elif choice == "4":
         print(Fore.CYAN + "\n🔗 Remote URLs:\n" + "-"*30)
-        os.system("git remote -v")
+        display_command("git remote -v")
     else:
         print(Fore.RED + "❌ Invalid option.")
 
@@ -63,13 +62,12 @@ def reset_commit():
             print(Fore.CYAN + "🚫 Reset canceled.")
             return
         with yaspin(text="Resetting to last commit...", color="yellow") as spinner:
-            time.sleep(0.5)
             run_command("git reset --hard HEAD", capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + "✅ Reset to last commit successfully.")
     elif choice == "2":
         print(Fore.CYAN + "\n📜 Recent commits:")
-        os.system("git log --oneline -10")
+        display_command("git log --oneline -10")
         commit_id = input("\nEnter commit ID to reset to: ").strip()
         if not commit_id:
             print(Fore.RED + "❌ Commit ID cannot be empty.")
@@ -79,7 +77,6 @@ def reset_commit():
             print(Fore.CYAN + "🚫 Reset canceled.")
             return
         with yaspin(text=f"Resetting to commit {commit_id}...", color="yellow") as spinner:
-            time.sleep(0.5)
             result = run_command(f"git reset --hard {commit_id}", capture_output=False)
             if result is not None:
                 spinner.ok("✅")
@@ -99,7 +96,7 @@ def amend_commit():
     
     print(Fore.CYAN + "\n✏️  Amend Last Commit")
     print(Fore.CYAN + "\nCurrent last commit:")
-    os.system("git log -1 --oneline")
+    display_command("git log -1 --oneline")
     
     print(Fore.CYAN + "\nAmend options:")
     print("  1. Change commit message only")
@@ -115,7 +112,6 @@ def amend_commit():
             print(Fore.RED + "❌ Commit message cannot be empty.")
             return
         with yaspin(text="Amending commit...", color="cyan") as spinner:
-            time.sleep(0.5)
             run_command(f'git commit --amend -m "{message}"', capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + "✅ Commit message updated successfully.")
@@ -133,7 +129,6 @@ def amend_commit():
                 print(Fore.YELLOW + "💡 Stage specific files using the 'stage' command first.")
                 return
         with yaspin(text="Amending commit...", color="cyan") as spinner:
-            time.sleep(0.5)
             run_command('git commit --amend --no-edit', capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + "✅ Changes added to last commit.")
@@ -156,7 +151,6 @@ def amend_commit():
             print(Fore.RED + "❌ Commit message cannot be empty.")
             return
         with yaspin(text="Amending commit...", color="cyan") as spinner:
-            time.sleep(0.5)
             run_command(f'git commit --amend -m "{message}"', capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + "✅ Commit amended successfully.")

@@ -1,12 +1,11 @@
 import os
-import time
 from colorama import Fore
 from yaspin import yaspin
-from .helpers import run_command, get_current_branch, sanitize_name
+from .helpers import run_command, get_current_branch, sanitize_name, display_command
 
 def switch_branch():
     print(Fore.CYAN + "\n🔀 Available branches:")
-    os.system("git branch")
+    display_command("git branch")
     branch = input("\nEnter branch name to switch to: ").strip()
     if not branch:
         print(Fore.RED + "❌ Branch name cannot be empty.")
@@ -14,7 +13,7 @@ def switch_branch():
     
     # Check if branch exists
     branches = run_command("git branch --list")
-    if branch not in branches:
+    if not branches or branch not in branches:
         print(Fore.YELLOW + f"⚠️  Branch '{branch}' doesn't exist locally.")
         create = input("Would you like to create it? (y/N): ").lower()
         if create == "y":
@@ -25,7 +24,6 @@ def switch_branch():
             return
     
     with yaspin(text=f"Switching to '{branch}'...", color="cyan") as spinner:
-        time.sleep(0.5)
         result = run_command(f"git checkout {branch}", capture_output=False)
         if result is not None:
             spinner.ok("✅")
@@ -85,4 +83,4 @@ def rename_branch():
 
 def list_branches():
     print(Fore.CYAN + "\n🌿 Branches:\n" + "-"*30)
-    os.system("git branch --all")
+    display_command("git branch --all")

@@ -3,7 +3,6 @@ import os
 import sys
 import readline
 import platform
-import time
 from colorama import Fore, Style, init
 from yaspin import yaspin
 
@@ -192,7 +191,6 @@ def main():
             confirm = input(f"Initialize git in {os.getcwd()}? (y/N): ").lower()
             if confirm == "y":
                 with yaspin(text="Initializing git repository...", color="cyan") as spinner:
-                    time.sleep(0.5)
                     result = run_command("git init", capture_output=False)
                     if result is not None:
                         spinner.ok("✅")

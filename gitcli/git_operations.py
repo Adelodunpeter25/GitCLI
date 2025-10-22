@@ -1,11 +1,10 @@
 import subprocess
 import os
-import time
 from colorama import Fore
 from yaspin import yaspin
 from .helpers import (
     run_command, send_notification, get_current_branch,
-    has_staged_changes, has_unstaged_changes, has_any_changes, has_remote
+    has_staged_changes, has_unstaged_changes, has_any_changes, has_remote, display_command
 )
 
 def commit_changes():
@@ -15,7 +14,6 @@ def commit_changes():
             choice = input("Do you want to stage all changes and commit? (y/N): ").lower()
             if choice == "y":
                 with yaspin(text="Staging all changes...", color="cyan") as spinner:
-                    time.sleep(0.5)
                     run_command("git add .", capture_output=False)
                     spinner.ok("✅")
                 print(Fore.GREEN + "✅ All changes staged.")
@@ -32,7 +30,6 @@ def commit_changes():
         print(Fore.RED + "❌ Commit message cannot be empty.")
         return
     with yaspin(text="Committing changes...", color="cyan") as spinner:
-        time.sleep(0.7)
         run_command(f'git commit -m "{message}"', capture_output=False)
         spinner.ok("✅")
     print(Fore.GREEN + f"✅ Changes committed with message: '{message}'")
@@ -57,7 +54,6 @@ def push_changes():
                 print(Fore.RED + "❌ Commit message cannot be empty. Push canceled.")
                 return
             with yaspin(text="Committing changes...", color="cyan") as spinner:
-                time.sleep(0.7)
                 run_command(f'git commit -m "{message}"', capture_output=False)
                 spinner.ok("✅")
             print(Fore.GREEN + f"✅ Changes committed with message: '{message}'")
@@ -67,7 +63,6 @@ def push_changes():
     
     # Now push (will push any commits that are ahead of remote)
     with yaspin(text=f"Pushing branch '{branch}'...", color="magenta") as spinner:
-        time.sleep(0.7)
         result = subprocess.run("git push", shell=True, capture_output=True, text=True)
         if result.returncode == 0:
             spinner.ok("🚀")
@@ -80,7 +75,6 @@ def push_changes():
                 force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
                 if force == "yes":
                     with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
-                        time.sleep(0.7)
                         force_result = run_command("git push --force", capture_output=False)
                         if force_result is not None:
                             spinner2.ok("🚀")
@@ -90,6 +84,8 @@ def push_changes():
                             spinner2.fail("❌")
                 else:
                     print(Fore.CYAN + "🚫 Force push canceled.")
+            else:
+                print(Fore.RED + f"❌ Push failed: {result.stderr.strip()}")
 
 def pull_changes():
     branch = get_current_branch()
@@ -100,7 +96,6 @@ def pull_changes():
     
     print(Fore.CYAN + f"\n⬇️  Pulling latest changes for '{branch}'...")
     with yaspin(text="Pulling...", color="cyan") as spinner:
-        time.sleep(0.7)
         result = run_command("git pull", capture_output=False)
         if result is not None:
             spinner.ok("✅")
@@ -123,20 +118,18 @@ def stage_changes():
     
     if choice == "1":
         with yaspin(text="Staging all changes...", color="cyan") as spinner:
-            time.sleep(0.5)
             run_command("git add .", capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + "✅ All changes staged.")
     elif choice == "2":
         print(Fore.CYAN + "\nUnstaged files:")
-        os.system("git diff --name-only")
+        display_command("git diff --name-only")
         print(Fore.CYAN + "\nEnter file paths (space-separated):")
         files = input("> ").strip()
         if not files:
             print(Fore.RED + "❌ No files specified.")
             return
         with yaspin(text="Staging files...", color="cyan") as spinner:
-            time.sleep(0.5)
             run_command(f"git add {files}", capture_output=False)
             spinner.ok("✅")
         print(Fore.GREEN + f"✅ Files staged: {files}")
@@ -145,11 +138,11 @@ def stage_changes():
 
 def show_status():
     print(Fore.CYAN + "\n📊 Git Status:\n" + "-"*30)
-    os.system("git status")
+    display_command("git status")
 
 def show_log():
     print(Fore.CYAN + "\n📜 Recent Commits:\n" + "-"*30)
-    os.system("git log --oneline --graph --decorate -10")
+    display_command("git log --oneline --graph --decorate -10")
 
 def show_diff():
     """Show unstaged changes"""
@@ -157,7 +150,7 @@ def show_diff():
         print(Fore.YELLOW + "⚠️  No unstaged changes to show.")
         return
     print(Fore.CYAN + "\n📝 Unstaged Changes:\n" + "-"*30)
-    os.system("git diff")
+    display_command("git diff")
 
 def show_diff_staged():
     """Show staged changes"""
@@ -165,7 +158,7 @@ def show_diff_staged():
         print(Fore.YELLOW + "⚠️  No staged changes to show.")
         return
     print(Fore.CYAN + "\n📝 Staged Changes:\n" + "-"*30)
-    os.system("git diff --cached")
+    display_command("git diff --cached")
 
 def sync_changes():
     """Pull then push changes"""
@@ -178,11 +171,10 @@ def sync_changes():
     # Pull first
     print(Fore.CYAN + f"\n🔄 Syncing '{branch}': Pull → Push")
     with yaspin(text="Pulling latest changes...", color="cyan") as spinner:
-        time.sleep(0.7)
         result = subprocess.run("git pull", shell=True, capture_output=True, text=True)
         if result.returncode != 0:
             spinner.fail("❌")
-            print(Fore.RED + "❌ Pull failed. Resolve conflicts before syncing.")
+            print(Fore.RED + f"❌ Pull failed: {result.stderr.strip()}")
             return
         spinner.ok("✅")
     print(Fore.GREEN + "✅ Pull complete.")
@@ -199,7 +191,6 @@ def sync_changes():
     
     # Push
     with yaspin(text=f"Pushing to '{branch}'...", color="magenta") as spinner:
-        time.sleep(0.7)
         result = subprocess.run("git push", shell=True, capture_output=True, text=True)
         if result.returncode == 0:
             spinner.ok("🚀")
@@ -207,6 +198,7 @@ def sync_changes():
             send_notification("GitCLI", f"Sync to '{branch}' complete!")
         else:
             spinner.fail("❌")
+            print(Fore.RED + f"❌ Push failed: {result.stderr.strip()}")
 
 def fetch_changes():
     """Fetch updates from remote without merging"""
@@ -216,7 +208,6 @@ def fetch_changes():
     
     print(Fore.CYAN + "\n📥 Fetching updates from remote...")
     with yaspin(text="Fetching...", color="cyan") as spinner:
-        time.sleep(0.7)
         result = run_command("git fetch", capture_output=False)
         if result is not None:
             spinner.ok("✅")
@@ -247,7 +238,6 @@ def clone_repository():
     
     print(Fore.CYAN + f"\n⬇️  Cloning repository...")
     with yaspin(text="Cloning...", color="cyan") as spinner:
-        time.sleep(0.7)
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         if result.returncode == 0:
             spinner.ok("✅")
@@ -278,7 +268,6 @@ def quick_push():
     # Stage all changes
     print(Fore.CYAN + "\n🚀 Quick Push: Stage → Commit → Push")
     with yaspin(text="Staging all changes...", color="cyan") as spinner:
-        time.sleep(0.5)
         run_command("git add .", capture_output=False)
         spinner.ok("✅")
     print(Fore.GREEN + "✅ All changes staged.")
@@ -292,14 +281,12 @@ def quick_push():
     
     # Commit
     with yaspin(text="Committing changes...", color="cyan") as spinner:
-        time.sleep(0.7)
         run_command(f'git commit -m "{message}"', capture_output=False)
         spinner.ok("✅")
     print(Fore.GREEN + f"✅ Changes committed with message: '{message}'")
     
     # Push
     with yaspin(text=f"Pushing to '{branch}'...", color="magenta") as spinner:
-        time.sleep(0.7)
         result = subprocess.run("git push", shell=True, capture_output=True, text=True)
         if result.returncode == 0:
             spinner.ok("🚀")
@@ -312,7 +299,6 @@ def quick_push():
                 force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
                 if force == "yes":
                     with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
-                        time.sleep(0.7)
                         force_result = run_command("git push --force", capture_output=False)
                         if force_result is not None:
                             spinner2.ok("🚀")
@@ -322,3 +308,5 @@ def quick_push():
                             spinner2.fail("❌")
                 else:
                     print(Fore.CYAN + "🚫 Force push canceled.")
+            else:
+                print(Fore.RED + f"❌ Push failed: {result.stderr.strip()}")
