@@ -38,7 +38,8 @@ def send_notification(title, message):
         pass
 
 def get_current_branch():
-    return run_command("git rev-parse --abbrev-ref HEAD") or "unknown"
+    branch = run_command("git rev-parse --abbrev-ref HEAD")
+    return branch if branch else "main"
 
 def get_repo_name():
     return os.path.basename(os.getcwd())
