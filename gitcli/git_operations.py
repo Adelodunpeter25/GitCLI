@@ -10,16 +10,11 @@ from .helpers import (
 def commit_changes():
     if not has_staged_changes():
         if has_unstaged_changes():
-            print(Fore.YELLOW + "⚠️  No staged changes found.")
-            choice = input("Do you want to stage all changes and commit? (y/N): ").lower()
-            if choice == "y":
-                with yaspin(text="Staging all changes...", color="cyan") as spinner:
-                    run_command("git add .", capture_output=False)
-                    spinner.ok("✅")
-                print(Fore.GREEN + "✅ All changes staged.")
-            else:
-                print(Fore.CYAN + "🚫 Commit canceled.")
-                return
+            print(Fore.CYAN + "📦 No staged changes. Staging all changes...")
+            with yaspin(text="Staging all changes...", color="cyan") as spinner:
+                run_command("git add .", capture_output=False)
+                spinner.ok("✅")
+            print(Fore.GREEN + "✅ All changes staged.")
         else:
             print(Fore.YELLOW + "⚠️  No changes to commit.")
             return
@@ -42,24 +37,10 @@ def push_changes():
         print(Fore.RED + "❌ No remote repository configured.")
         return
     
-    # Check if there are uncommitted changes that need to be committed first
-    if has_unstaged_changes() and not has_staged_changes():
-        print(Fore.YELLOW + "⚠️  You have unstaged changes.")
-        choice = input("Do you want to stage all changes and commit before pushing? (y/N): ").lower()
-        if choice == "y":
-            run_command("git add .", capture_output=False)
-            print(Fore.CYAN + "Enter commit message for staged changes:")
-            message = input("> ").strip()
-            if not message:
-                print(Fore.RED + "❌ Commit message cannot be empty. Push canceled.")
-                return
-            with yaspin(text="Committing changes...", color="cyan") as spinner:
-                run_command(f'git commit -m "{message}"', capture_output=False)
-                spinner.ok("✅")
-            print(Fore.GREEN + f"✅ Changes committed with message: '{message}'")
-        else:
-            print(Fore.CYAN + "🚫 Push canceled.")
-            return
+    # Check if there are uncommitted changes
+    if has_unstaged_changes() or has_staged_changes():
+        print(Fore.YELLOW + "⚠️  You have uncommitted changes. Commit them first or use 'qp' for quick push.")
+        return
     
     # Now push (will push any commits that are ahead of remote)
     with yaspin(text=f"Pushing branch '{branch}'...", color="magenta") as spinner:

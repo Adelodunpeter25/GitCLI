@@ -119,15 +119,11 @@ def amend_commit():
         if not has_unstaged_changes() and not has_staged_changes():
             print(Fore.YELLOW + "⚠️  No changes to add to the commit.")
             return
-        # Stage changes if needed
+        # Auto-stage changes if needed
         if has_unstaged_changes():
-            stage_all = input("Stage all changes? (y/N): ").lower()
-            if stage_all == "y":
-                run_command("git add .", capture_output=False)
-                print(Fore.GREEN + "✅ Changes staged.")
-            else:
-                print(Fore.YELLOW + "💡 Stage specific files using the 'stage' command first.")
-                return
+            print(Fore.CYAN + "📦 Staging all changes...")
+            run_command("git add .", capture_output=False)
+            print(Fore.GREEN + "✅ Changes staged.")
         with yaspin(text="Amending commit...", color="cyan") as spinner:
             run_command('git commit --amend --no-edit', capture_output=False)
             spinner.ok("✅")
@@ -136,15 +132,11 @@ def amend_commit():
         if not has_unstaged_changes() and not has_staged_changes():
             print(Fore.YELLOW + "⚠️  No changes to add to the commit.")
             return
-        # Stage changes if needed
+        # Auto-stage changes if needed
         if has_unstaged_changes():
-            stage_all = input("Stage all changes? (y/N): ").lower()
-            if stage_all == "y":
-                run_command("git add .", capture_output=False)
-                print(Fore.GREEN + "✅ Changes staged.")
-            else:
-                print(Fore.YELLOW + "💡 Stage specific files using the 'stage' command first.")
-                return
+            print(Fore.CYAN + "📦 Staging all changes...")
+            run_command("git add .", capture_output=False)
+            print(Fore.GREEN + "✅ Changes staged.")
         print(Fore.CYAN + "\n📝 Enter new commit message:")
         message = input("> ").strip()
         if not message:
