@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="gitcli-automation",
-    version="1.0.1",
+    version="1.0.2",
     author="Adelodunpeter",
     author_email="adelodunpeter24@gmail.com",
     description="User-friendly Git CLI automation tool with interactive menus and visual feedback",
