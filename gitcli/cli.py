@@ -23,15 +23,22 @@ from .git_stash import (
     stash_drop, stash_show
 )
 from .git_conflicts import resolve_conflicts, check_conflicts
+from .smart_workflows import (
+    smart_save, smart_work, smart_done, smart_sync, 
+    smart_undo, smart_status
+)
 
 # Initialize colorama
 init(autoreset=True)
 
-# Tab completion
+# Tab completion - Smart commands first, then advanced
 COMMANDS = [
-    "commit", "push", "pull", "status", "stage", "log", "diff", "diff-staged",
+    # Smart workflows (recommended)
+    "save", "work", "done", "sync", "undo", "status",
+    # Advanced commands
+    "commit", "push", "pull", "stage", "log", "diff", "diff-staged",
     "switch-branch", "add-branch", "delete-branch", "rename-branch", "list-branch", 
-    "quick-push", "qp", "sync", "fetch", "clone", "remotes", "reset", 
+    "quick-push", "qp", "fetch", "clone", "remotes", "reset", 
     "amend", "hooks", "list-hooks", "stash", "stash-pop", "stash-apply", 
     "stash-list", "stash-drop", "stash-show", "resolve-conflicts", "check-conflicts",
     "help", "quit"
@@ -59,53 +66,99 @@ def show_welcome():
     print(Fore.CYAN + f"  Repository: " + Fore.WHITE + f"{repo}")
     print(Fore.CYAN + f"  Branch: " + Fore.WHITE + f"{branch}")
     print(Fore.MAGENTA + Style.BRIGHT + "=" * 60)
-    print(Fore.YELLOW + "\n💡 Type 'help' to see available commands")
-    print(Fore.YELLOW + "💡 Press Tab for auto-complete\n")
+    print(Fore.GREEN + "\n� Quick Start':")
+    print(Fore.CYAN + "  save" + Fore.WHITE + "  - Smart save your work")
+    print(Fore.CYAN + "  work" + Fore.WHITE + "  - Start working on a branch")
+    print(Fore.CYAN + "  done" + Fore.WHITE + "  - Finish and push your work")
+    print(Fore.CYAN + "  sync" + Fore.WHITE + "  - Sync with remote")
+    print(Fore.YELLOW + "\n💡 Type 'help' for all commands | Press Tab for auto-complete\n")
 
 def show_help():
     """Display all available commands"""
-    print("\n" + Fore.CYAN + Style.BRIGHT + "📚 Available Commands:")
-    print(Fore.CYAN + "-" * 60)
+    print("\n" + Fore.CYAN + Style.BRIGHT + "📚 GitCLI Commands")
+    print(Fore.CYAN + "=" * 60)
     
-    commands = [
+    print(Fore.MAGENTA + Style.BRIGHT + "\n🚀 Smart Workflows (Recommended)")
+    print(Fore.CYAN + "-" * 60)
+    smart_commands = [
+        ("save", "Smart save: commit, stash, or push"),
+        ("work <branch>", "Start working on a feature branch"),
+        ("done", "Finish work: commit, push, switch back"),
+        ("sync", "Sync with remote (auto-handles conflicts)"),
+        ("undo", "Smart undo last action"),
+        ("status", "Enhanced status with all info"),
+    ]
+    for cmd, desc in smart_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
+    
+    print(Fore.YELLOW + Style.BRIGHT + "\n⚙️  Advanced Commands")
+    print(Fore.CYAN + "-" * 60)
+    advanced_commands = [
         ("commit", "Commit staged changes"),
         ("push", "Push changes to remote"),
         ("pull", "Pull latest changes"),
-        ("sync", "Pull then push in one command"),
-        ("fetch", "Fetch updates without merging"),
-        ("status", "Show git status"),
         ("stage", "Stage changes for commit"),
         ("log", "View commit history"),
         ("diff", "Show unstaged changes"),
         ("diff-staged", "Show staged changes"),
+        ("quick-push / qp", "Stage, commit & push in one go"),
+    ]
+    for cmd, desc in advanced_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
+    
+    print(Fore.YELLOW + Style.BRIGHT + "\n🌿 Branch Management")
+    print(Fore.CYAN + "-" * 60)
+    branch_commands = [
         ("switch-branch", "Switch to another branch"),
         ("add-branch", "Create new branch"),
         ("delete-branch", "Delete a branch"),
         ("rename-branch", "Rename a branch"),
         ("list-branch", "List all branches"),
-        ("quick-push / qp", "Stage, commit & push in one go"),
-        ("clone", "Clone a repository"),
-        ("remotes", "Manage remote repositories"),
-        ("reset", "Reset to previous commit"),
-        ("amend", "Amend last commit"),
-        ("hooks", "Manage Git hooks"),
-        ("list-hooks", "List installed hooks"),
+    ]
+    for cmd, desc in branch_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
+    
+    print(Fore.YELLOW + Style.BRIGHT + "\n💾 Stash Management")
+    print(Fore.CYAN + "-" * 60)
+    stash_commands = [
         ("stash", "Stash uncommitted changes"),
         ("stash-pop", "Apply and remove stash"),
         ("stash-apply", "Apply stash (keep it)"),
         ("stash-list", "List all stashes"),
         ("stash-drop", "Remove a stash"),
         ("stash-show", "Show stash contents"),
+    ]
+    for cmd, desc in stash_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
+    
+    print(Fore.YELLOW + Style.BRIGHT + "\n🔧 Conflict & Hooks")
+    print(Fore.CYAN + "-" * 60)
+    other_commands = [
         ("resolve-conflicts", "Resolve merge conflicts"),
         ("check-conflicts", "Check for conflicts"),
+        ("hooks", "Manage Git hooks"),
+        ("list-hooks", "List installed hooks"),
+    ]
+    for cmd, desc in other_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
+    
+    print(Fore.YELLOW + Style.BRIGHT + "\n🛠️  Other")
+    print(Fore.CYAN + "-" * 60)
+    misc_commands = [
+        ("fetch", "Fetch updates without merging"),
+        ("clone", "Clone a repository"),
+        ("remotes", "Manage remote repositories"),
+        ("reset", "Reset to previous commit"),
+        ("amend", "Amend last commit"),
         ("help", "Show this help message"),
         ("quit", "Exit GitCLI"),
     ]
+    for cmd, desc in misc_commands:
+        print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
     
-    for cmd, desc in commands:
-        print(Fore.GREEN + f"  {cmd.ljust(16)}" + Fore.WHITE + f"{desc}")
-    
-    print(Fore.CYAN + "-" * 60 + "\n")
+    print(Fore.CYAN + "\n" + "=" * 60)
+    print(Fore.YELLOW + "💡 Tip: Use smart workflows for faster, automated Git operations!")
+    print(Fore.CYAN + "=" * 60 + "\n")
 
 def show_prompt():
     """Show simple prompt with current branch"""
@@ -137,22 +190,32 @@ def normalize_command(cmd):
     
     return command_map.get(cmd, cmd)
 
-def execute_command(command):
+def execute_command(command, args=None):
     """Execute a single command"""
-    if command == "commit":
+    # Smart workflows
+    if command == "save":
+        smart_save()
+    elif command == "work":
+        smart_work(args[0] if args else None)
+    elif command == "done":
+        smart_done()
+    elif command == "sync":
+        smart_sync()
+    elif command == "undo":
+        smart_undo()
+    elif command == "status":
+        smart_status()
+    # Original commands
+    elif command == "commit":
         commit_changes()
     elif command == "push":
         push_changes()
     elif command == "pull":
         pull_changes()
-    elif command == "sync":
-        sync_changes()
     elif command == "fetch":
         fetch_changes()
     elif command == "clone":
         clone_repository()
-    elif command == "status":
-        show_status()
     elif command == "stage":
         stage_changes()
     elif command == "log":
@@ -208,15 +271,19 @@ def execute_command(command):
 def main():
     # Check for command-line arguments
     if len(sys.argv) > 1:
-        # Join all arguments to handle "gitcli list branch" or "gitcli quick push"
-        command = normalize_command(" ".join(sys.argv[1:]))
+        # Parse command and arguments
+        raw_command = sys.argv[1]
+        command_args = sys.argv[2:] if len(sys.argv) > 2 else None
+        
+        # Normalize command (but keep args separate)
+        command = normalize_command(raw_command)
         
         if not os.path.isdir(".git") and command not in ["clone", "help"]:
             print(Fore.RED + "❌ Not a git repository.")
             sys.exit(1)
         
         # Execute command directly
-        if execute_command(command):
+        if execute_command(command, command_args):
             sys.exit(0)
         else:
             print(Fore.RED + f"❌ Unknown command: {command}")
@@ -257,12 +324,20 @@ def main():
     show_welcome()
     
     while True:
-        choice = normalize_command(input(show_prompt()))
+        user_input = input(show_prompt()).strip()
         
-        if choice == "quit":
+        if not user_input:
+            continue
+        
+        # Parse input
+        parts = user_input.split()
+        command = normalize_command(parts[0])
+        args = parts[1:] if len(parts) > 1 else None
+        
+        if command == "quit":
             print(Fore.CYAN + "👋 Exiting GitCLI...")
             break
-        elif not execute_command(choice):
+        elif not execute_command(command, args):
             print(Fore.RED + "❌ Unknown command. Type 'help' to see available commands or press Tab for auto-complete.")
 
 if __name__ == "__main__":
