@@ -17,6 +17,7 @@ from .git_branches import (
     switch_branch, add_branch, delete_branch, rename_branch, list_branches
 )
 from .git_advanced import manage_remotes, reset_commit, amend_commit
+from .git_hooks import manage_hooks, list_installed_hooks
 
 # Initialize colorama
 init(autoreset=True)
@@ -26,7 +27,7 @@ COMMANDS = [
     "commit", "push", "pull", "status", "stage", "log", "diff", "diff-staged",
     "switch-branch", "add-branch", "delete-branch", "rename-branch", "list-branch", 
     "quick-push", "qp", "sync", "fetch", "clone", "remotes", "reset", 
-    "amend", "help", "quit"
+    "amend", "hooks", "list-hooks", "help", "quit"
 ]
 
 def completer(text, state):
@@ -80,6 +81,8 @@ def show_help():
         ("remotes", "Manage remote repositories"),
         ("reset", "Reset to previous commit"),
         ("amend", "Amend last commit"),
+        ("hooks", "Manage Git hooks"),
+        ("list-hooks", "List installed hooks"),
         ("help", "Show this help message"),
         ("quit", "Exit GitCLI"),
     ]
@@ -107,6 +110,7 @@ def normalize_command(cmd):
         "renamebranch": "rename-branch",
         "quickpush": "quick-push",
         "diffstaged": "diff-staged",
+        "listhooks": "list-hooks",
     }
     
     return command_map.get(cmd, cmd)
@@ -143,6 +147,10 @@ def execute_command(command):
         reset_commit()
     elif command == "amend":
         amend_commit()
+    elif command == "hooks":
+        manage_hooks()
+    elif command == "list-hooks":
+        list_installed_hooks()
     elif command == "switch-branch":
         switch_branch()
     elif command == "add-branch":

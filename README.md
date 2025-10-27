@@ -10,6 +10,7 @@ GitCLI is a user-friendly command-line tool for Git that simplifies everyday ope
 - 🛡️ Safety checks for destructive operations
 - 🖥️ Cross-platform (macOS, Linux, Windows)
 - 🚀 Direct command execution or interactive mode
+- 🪝 Git hooks management with built-in templates
 
 ## Installation
 
@@ -62,6 +63,8 @@ gitcli sync            # pull + push
 - `reset` - Reset to previous commit
 - `remotes` - Manage remote repositories
 - `clone` - Clone a repository
+- `hooks` - Manage Git hooks (automation)
+- `list-hooks` - List installed hooks
 
 ## Command Flexibility
 
@@ -96,10 +99,54 @@ gitcli qp
 gitcli switch-branch main
 ```
 
+**Git Hooks automation:**
+```bash
+gitcli hooks              # Manage hooks
+gitcli list-hooks         # See installed hooks
+```
+
 ## Requirements
 
 - Python 3.7+
 - Git installed and configured
+
+## Git Hooks Automation
+
+GitCLI includes powerful Git hooks management to automate your workflow:
+
+### Available Hook Templates
+
+**Pre-commit Hooks:**
+- Code Linting - Run linters before each commit
+- Auto-formatting - Format code automatically
+- Run Tests - Execute test suite before commit
+- Block Debug Code - Prevent commits with debug statements
+
+**Pre-push Hooks:**
+- Run Full Test Suite - Ensure all tests pass before push
+- Protect Main Branch - Prevent direct pushes to main/master
+- Build Before Push - Verify project builds successfully
+
+**Commit Message Hooks:**
+- Conventional Commits - Enforce conventional commit format
+- Minimum Message Length - Require descriptive messages
+- Block WIP Commits - Prevent work-in-progress commits
+
+**Post-commit Hooks:**
+- Commit Notification - Get notified after each commit
+- Auto Backup - Create automatic backups
+
+### Using Hooks
+
+```bash
+# Open hooks management menu
+gitcli hooks
+
+# View installed hooks
+gitcli list-hooks
+```
+
+Hooks are stored in `.git/hooks/` and configuration is saved in `.gitcli-hooks.json` for easy sharing with your team.
 
 ## Safety Features
 

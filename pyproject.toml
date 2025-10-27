@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitcli-automation"
-version = "1.0.2"
+version = "1.1.0"
 description = "User-friendly command-line tool for Git that simplifies everyday operations. Perfect for developers who want powerful Git functionality without the complexity."
 readme = "README.md"
 requires-python = ">=3.7"
