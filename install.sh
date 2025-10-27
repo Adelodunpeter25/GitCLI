@@ -70,7 +70,7 @@ echo -e "${CYAN}Choose installation method:${NC}"
 echo "  1. Install from PyPI (recommended - latest stable)"
 echo "  2. Install from GitHub (latest development version)"
 echo ""
-read -p "Enter choice (1 or 2): " INSTALL_METHOD
+read -p "Enter choice (1 or 2): " INSTALL_METHOD </dev/tty
 
 if [ "$INSTALL_METHOD" = "1" ]; then
     # Install from PyPI using pipx if available, otherwise pip

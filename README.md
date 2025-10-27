@@ -4,15 +4,14 @@ GitCLI is a user-friendly command-line tool for Git that simplifies everyday ope
 
 ## Features
 
-- 🎨 Colored output and loading spinners
-- 🔔 System notifications (macOS/Linux/Windows)
-- ⌨️ Tab completion in interactive mode
-- 🛡️ Safety checks for destructive operations
-- 🖥️ Cross-platform (macOS, Linux, Windows)
-- 🚀 Direct command execution or interactive mode
-- 🪝 Git hooks management with built-in templates
-- 💾 Stash management for quick context switching
-- 🔧 Interactive conflict resolution helper
+- 🚀 **Smart Save** - `gitcli save` handles everything with intelligent defaults
+- 🤖 **Smart Commit Messages** - Learns from your history and suggests messages
+- 🛡️ **Pre-save Validation** - Detects debug code, secrets, conflicts, and large files
+- 🔄 **Auto-pull Before Push** - Prevents conflicts automatically
+- ⚙️ **Fully Configurable** - Customize every behavior to match your style
+- 🪝 **Git Hooks Management** - Built-in templates for linting, testing, formatting
+- 🔧 **Conflict Resolution** - Interactive helper for merge conflicts
+- �️ **Crosss-platform** - macOS, Linux, Windows
 
 ## Installation
 
@@ -50,116 +49,57 @@ curl -sSL https://raw.githubusercontent.com/Adelodunpeter25/GitCLI/main/uninstal
 
 ## Quick Start
 
-### Interactive Mode
 ```bash
+# Make changes, then save everything
+gitcli save
+
+# Or with custom message
+gitcli save "fix: resolve login bug"
+
+# Configure behavior
+gitcli config
+
+# Interactive mode
 gitcli
 ```
 
-### Direct Commands
-```bash
-gitcli status
-gitcli commit
-gitcli push
-gitcli qp              # quick push: stage + commit + push
-gitcli sync            # pull + push
-```
+## Key Commands
 
-## Available Commands
+**Smart Commands:**
+- `save` / `save <message>` - Stage, commit, push with smart defaults
+- `config` - Configure behavior
 
-### Core Operations
-- `commit` - Commit staged changes
-- `push` - Push to remote (with force push option)
-- `pull` - Pull latest changes
-- `sync` - Pull then push in one command
-- `fetch` - Fetch updates without merging
-- `stage` - Stage changes (all or specific files)
-- `status` - Show git status
-- `log` - View commit history
-- `diff` - Show unstaged changes
-- `diff-staged` - Show staged changes
+**Core:** `commit`, `push`, `pull`, `sync`, `status`, `log`, `diff`, `stage`, `qp`
 
-### Branch Management
-- `switch-branch` - Switch to another branch
-- `add-branch` - Create new branch
-- `delete-branch` - Delete a branch
-- `rename-branch` - Rename a branch
-- `list-branch` - List all branches
+**Branches:** `switch-branch`, `add-branch`, `delete-branch`, `list-branch`
 
-### Quick Operations
-- `quick-push` or `qp` - Stage, commit & push in one go
+**Stash:** `stash`, `stash-pop`, `stash-apply`, `stash-list`
 
-### Stash Management
-- `stash` - Save uncommitted changes
-- `stash-pop` - Apply and remove most recent stash
-- `stash-apply` - Apply stash without removing
-- `stash-list` - View all stashes
-- `stash-drop` - Remove a stash
-- `stash-show` - Show stash contents
+**Advanced:** `hooks`, `resolve-conflicts`, `amend`, `reset`, `remotes`
 
-### Conflict Resolution
-- `resolve-conflicts` - Interactive conflict resolution
-- `check-conflicts` - Check for merge conflicts
+Type `gitcli help` for full list.
 
-### Advanced
-- `amend` - Amend last commit
-- `reset` - Reset to previous commit
-- `remotes` - Manage remote repositories
-- `clone` - Clone a repository
-- `hooks` - Manage Git hooks (automation)
-- `list-hooks` - List installed hooks
-
-## Command Flexibility
-
-Commands work with spaces, hyphens, or no spaces:
-```bash
-gitcli list-branch    # ✅
-gitcli listbranch     # ✅
-gitcli list branch    # ✅
-```
 
 ## Examples
 
-**Quick workflow:**
 ```bash
-gitcli qp
-```
+# Daily workflow
+gitcli save                              # Smart save with auto-message
+gitcli save "feat: add authentication"   # Custom message
 
-**Standard workflow:**
-```bash
-gitcli status
-gitcli diff
-gitcli stage
-gitcli commit
-gitcli push
-```
-
-**Branch workflow:**
-```bash
+# Branch workflow
 gitcli add-branch feature-x
-# ... make changes ...
-gitcli qp
+gitcli save
 gitcli switch-branch main
-```
 
-**Git Hooks automation:**
-```bash
-gitcli hooks              # Manage hooks
-gitcli list-hooks         # See installed hooks
-```
+# Stash workflow
+gitcli stash
+gitcli switch-branch main
+gitcli stash-pop
 
-**Stash workflow:**
-```bash
-gitcli stash              # Save work in progress
-gitcli switch-branch main # Switch branches
-# ... do other work ...
-gitcli switch-branch feature-x
-gitcli stash-pop          # Restore your work
-```
-
-**Conflict resolution:**
-```bash
-gitcli pull               # Conflicts detected
-gitcli resolve-conflicts  # Interactive resolution helper
+# Hooks
+gitcli hooks              # Setup automation
+gitcli list-hooks         # View active hooks
 ```
 
 ## Requirements
@@ -167,53 +107,36 @@ gitcli resolve-conflicts  # Interactive resolution helper
 - Python 3.7+
 - Git installed and configured
 
-## Git Hooks Automation
+## Git Hooks
 
-GitCLI includes powerful Git hooks management to automate your workflow:
-
-### Available Hook Templates
-
-**Pre-commit Hooks:**
-- Code Linting - Run linters before each commit
-- Auto-formatting - Format code automatically
-- Run Tests - Execute test suite before commit
-- Block Debug Code - Prevent commits with debug statements
-
-**Pre-push Hooks:**
-- Run Full Test Suite - Ensure all tests pass before push
-- Protect Main Branch - Prevent direct pushes to main/master
-- Build Before Push - Verify project builds successfully
-
-**Commit Message Hooks:**
-- Conventional Commits - Enforce conventional commit format
-- Minimum Message Length - Require descriptive messages
-- Block WIP Commits - Prevent work-in-progress commits
-
-**Post-commit Hooks:**
-- Commit Notification - Get notified after each commit
-- Auto Backup - Create automatic backups
-
-### Using Hooks
+Built-in templates for automation:
+- **Pre-commit:** Linting, formatting, tests, debug detection
+- **Pre-push:** Full tests, branch protection, build verification
+- **Commit-msg:** Conventional commits, message validation
+- **Post-commit:** Notifications, auto-backup
 
 ```bash
-# Open hooks management menu
-gitcli hooks
-
-# View installed hooks
-gitcli list-hooks
+gitcli hooks       # Setup
+gitcli list-hooks  # View active
 ```
 
-Hooks are stored in `.git/hooks/` and configuration is saved in `.gitcli-hooks.json` for easy sharing with your team.
+## Configuration
 
-## Safety Features
+Run `gitcli config` to customize behavior:
 
-- Confirmation prompts for destructive operations
-- Branch protection (can't delete current branch)
-- Remote validation before push/pull
+- **auto_stage** - Auto-stage all changes (default: true)
+- **auto_push** - Prompt to push after commit (default: true)
+- **learn_from_history** - Smart commit messages (default: true)
+- **pre_save_validation** - Validate before commit (default: true)
+- **auto_pull_before_push** - Sync before push (default: true)
+- **auto_fix_formatting** - Run formatters (default: false)
+- **confirm_force_push** - Confirm force push (default: true)
 
-## Contributing
+**Validation rules:** Detects debug code, secrets, conflicts, large files (configurable)
 
-Contributions welcome! Visit the [GitHub repository](https://github.com/Adelodunpeter25/GitCLI).
+Config stored in `.gitcli-config.json`
+
+
 
 ## License
 
