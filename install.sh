@@ -70,7 +70,12 @@ echo -e "${CYAN}Choose installation method:${NC}"
 echo "  1. Install from PyPI (recommended - latest stable)"
 echo "  2. Install from GitHub (latest development version)"
 echo ""
-read -p "Enter choice (1 or 2): " INSTALL_METHOD </dev/tty
+read -p "Enter choice (1 or 2, default: 1): " INSTALL_METHOD </dev/tty
+
+# Default to PyPI if empty
+if [ -z "$INSTALL_METHOD" ]; then
+    INSTALL_METHOD="1"
+fi
 
 if [ "$INSTALL_METHOD" = "1" ]; then
     # Install from PyPI using pipx if available, otherwise pip
@@ -105,7 +110,7 @@ if [ "$INSTALL_METHOD" = "1" ]; then
         fi
     fi
 
-elif [ "$INSTALL_METHOD" = "2" ]; then
+elif [ "$INSTALL_METHOD" = "2" ] || [ "$INSTALL_METHOD" = "github" ]; then
     # Install from GitHub
     echo -e "\n${CYAN}Installing GitCLI from GitHub...${NC}"
     
@@ -151,7 +156,8 @@ elif [ "$INSTALL_METHOD" = "2" ]; then
     
     echo -e "${GREEN}✅ GitCLI installed successfully from GitHub!${NC}"
 else
-    echo -e "${RED}❌ Invalid choice!${NC}"
+    echo -e "${RED}❌ Invalid choice: '$INSTALL_METHOD'${NC}"
+    echo -e "${YELLOW}Please enter 1 or 2${NC}"
     exit 1
 fi
 
