@@ -11,6 +11,8 @@ GitCLI is a user-friendly command-line tool for Git that simplifies everyday ope
 - 🖥️ Cross-platform (macOS, Linux, Windows)
 - 🚀 Direct command execution or interactive mode
 - 🪝 Git hooks management with built-in templates
+- 💾 Stash management for quick context switching
+- 🔧 Interactive conflict resolution helper
 
 ## Installation
 
@@ -58,6 +60,18 @@ gitcli sync            # pull + push
 ### Quick Operations
 - `quick-push` or `qp` - Stage, commit & push in one go
 
+### Stash Management
+- `stash` - Save uncommitted changes
+- `stash-pop` - Apply and remove most recent stash
+- `stash-apply` - Apply stash without removing
+- `stash-list` - View all stashes
+- `stash-drop` - Remove a stash
+- `stash-show` - Show stash contents
+
+### Conflict Resolution
+- `resolve-conflicts` - Interactive conflict resolution
+- `check-conflicts` - Check for merge conflicts
+
 ### Advanced
 - `amend` - Amend last commit
 - `reset` - Reset to previous commit
@@ -103,6 +117,21 @@ gitcli switch-branch main
 ```bash
 gitcli hooks              # Manage hooks
 gitcli list-hooks         # See installed hooks
+```
+
+**Stash workflow:**
+```bash
+gitcli stash              # Save work in progress
+gitcli switch-branch main # Switch branches
+# ... do other work ...
+gitcli switch-branch feature-x
+gitcli stash-pop          # Restore your work
+```
+
+**Conflict resolution:**
+```bash
+gitcli pull               # Conflicts detected
+gitcli resolve-conflicts  # Interactive resolution helper
 ```
 
 ## Requirements

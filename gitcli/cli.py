@@ -18,6 +18,11 @@ from .git_branches import (
 )
 from .git_advanced import manage_remotes, reset_commit, amend_commit
 from .git_hooks import manage_hooks, list_installed_hooks
+from .git_stash import (
+    stash_changes, stash_pop, stash_apply, stash_list, 
+    stash_drop, stash_show
+)
+from .git_conflicts import resolve_conflicts, check_conflicts
 
 # Initialize colorama
 init(autoreset=True)
@@ -27,7 +32,9 @@ COMMANDS = [
     "commit", "push", "pull", "status", "stage", "log", "diff", "diff-staged",
     "switch-branch", "add-branch", "delete-branch", "rename-branch", "list-branch", 
     "quick-push", "qp", "sync", "fetch", "clone", "remotes", "reset", 
-    "amend", "hooks", "list-hooks", "help", "quit"
+    "amend", "hooks", "list-hooks", "stash", "stash-pop", "stash-apply", 
+    "stash-list", "stash-drop", "stash-show", "resolve-conflicts", "check-conflicts",
+    "help", "quit"
 ]
 
 def completer(text, state):
@@ -83,6 +90,14 @@ def show_help():
         ("amend", "Amend last commit"),
         ("hooks", "Manage Git hooks"),
         ("list-hooks", "List installed hooks"),
+        ("stash", "Stash uncommitted changes"),
+        ("stash-pop", "Apply and remove stash"),
+        ("stash-apply", "Apply stash (keep it)"),
+        ("stash-list", "List all stashes"),
+        ("stash-drop", "Remove a stash"),
+        ("stash-show", "Show stash contents"),
+        ("resolve-conflicts", "Resolve merge conflicts"),
+        ("check-conflicts", "Check for conflicts"),
         ("help", "Show this help message"),
         ("quit", "Exit GitCLI"),
     ]
@@ -111,6 +126,13 @@ def normalize_command(cmd):
         "quickpush": "quick-push",
         "diffstaged": "diff-staged",
         "listhooks": "list-hooks",
+        "stashpop": "stash-pop",
+        "stashapply": "stash-apply",
+        "stashlist": "stash-list",
+        "stashdrop": "stash-drop",
+        "stashshow": "stash-show",
+        "resolveconflicts": "resolve-conflicts",
+        "checkconflicts": "check-conflicts",
     }
     
     return command_map.get(cmd, cmd)
@@ -151,6 +173,22 @@ def execute_command(command):
         manage_hooks()
     elif command == "list-hooks":
         list_installed_hooks()
+    elif command == "stash":
+        stash_changes()
+    elif command == "stash-pop":
+        stash_pop()
+    elif command == "stash-apply":
+        stash_apply()
+    elif command == "stash-list":
+        stash_list()
+    elif command == "stash-drop":
+        stash_drop()
+    elif command == "stash-show":
+        stash_show()
+    elif command == "resolve-conflicts":
+        resolve_conflicts()
+    elif command == "check-conflicts":
+        check_conflicts()
     elif command == "switch-branch":
         switch_branch()
     elif command == "add-branch":
