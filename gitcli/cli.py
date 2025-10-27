@@ -263,16 +263,18 @@ def manage_config():
     print(f"  1. Auto-stage changes: {Fore.GREEN if config.get('auto_stage', True) else Fore.RED}{config.get('auto_stage', True)}")
     print(f"  2. Auto-push prompt: {Fore.GREEN if config.get('auto_push', True) else Fore.RED}{config.get('auto_push', True)}")
     print(f"  3. Learn from commit history: {Fore.GREEN if config.get('learn_from_history', True) else Fore.RED}{config.get('learn_from_history', True)}")
+    print(f"  4. Pre-save validation: {Fore.GREEN if config.get('pre_save_validation', True) else Fore.RED}{config.get('pre_save_validation', True)}")
     print(Fore.CYAN + "\n" + "="*60)
     
     print(Fore.CYAN + "\nOptions:")
     print("  1. Toggle auto-stage")
     print("  2. Toggle auto-push prompt")
     print("  3. Toggle learn from history")
-    print("  4. Reset to defaults")
-    print("  5. Back")
+    print("  4. Toggle pre-save validation")
+    print("  5. Reset to defaults")
+    print("  6. Back")
     
-    choice = input("\nChoose option (1-5): ").strip()
+    choice = input("\nChoose option (1-6): ").strip()
     
     if choice == "1":
         config["auto_stage"] = not config.get("auto_stage", True)
@@ -290,14 +292,22 @@ def manage_config():
         status = "enabled" if config["learn_from_history"] else "disabled"
         print(Fore.GREEN + f"✅ Learn from history {status}!")
     elif choice == "4":
+        config["pre_save_validation"] = not config.get("pre_save_validation", True)
+        save_config(config)
+        status = "enabled" if config["pre_save_validation"] else "disabled"
+        print(Fore.GREEN + f"✅ Pre-save validation {status}!")
+        if status == "enabled":
+            print(Fore.YELLOW + "💡 Validation checks for: conflicts, debug code, secrets, large files")
+    elif choice == "5":
         config = {
             "auto_push": True,
             "auto_stage": True,
-            "learn_from_history": True
+            "learn_from_history": True,
+            "pre_save_validation": True
         }
         save_config(config)
         print(Fore.GREEN + "✅ Configuration reset to defaults!")
-    elif choice == "5":
+    elif choice == "6":
         return
     else:
         print(Fore.RED + "❌ Invalid option.")

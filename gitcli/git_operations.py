@@ -5,16 +5,17 @@ from yaspin import yaspin
 from .helpers import (
     run_command, send_notification, get_current_branch,
     has_staged_changes, has_unstaged_changes, has_any_changes, has_remote, display_command,
-    get_config, generate_commit_message
+    get_config, generate_commit_message, check_for_conflicts, validate_changes, check_large_files
 )
 
 
 def smart_save(commit_message=None):
     """
     Smart save command with configuration support:
-    1. Automatically stage all changes
-    2. Smart commit message with suggestions
-    3. Configurable auto-push
+    1. Check for conflicts and validate changes
+    2. Automatically stage all changes
+    3. Smart commit message with suggestions
+    4. Configurable auto-push
     """
     branch = get_current_branch()
     config = get_config()
@@ -38,6 +39,52 @@ def smart_save(commit_message=None):
         else:
             print(Fore.GREEN + "\n✅ No changes to save!")
         return
+    
+    # Step 0: Check for conflicts
+    if check_for_conflicts():
+        print(Fore.RED + "\n⚠️  Merge conflicts detected!")
+        print(Fore.CYAN + "💡 You must resolve conflicts before saving.")
+        resolve = input("Open conflict resolution helper? (Y/n): ").lower()
+        if resolve != "n":
+            from .git_conflicts import resolve_conflicts
+            resolve_conflicts()
+        return
+    
+    # Step 0.5: Pre-save validation
+    if config.get("pre_save_validation", True):
+        print(Fore.CYAN + "\n🔍 Validating changes...")
+        
+        # Check for large files
+        large_files = check_large_files()
+        if large_files:
+            print(Fore.YELLOW + "\n⚠️  Large files detected:")
+            for filepath, size_mb in large_files:
+                print(f"  • {filepath} ({size_mb:.1f} MB)")
+            proceed = input(Fore.YELLOW + "Continue anyway? (y/N): ").lower()
+            if proceed != "y":
+                print(Fore.CYAN + "🚫 Save canceled.")
+                return
+        
+        # Validate for issues
+        is_valid, issues = validate_changes()
+        if not is_valid:
+            print(Fore.RED + "\n⚠️  Issues found:")
+            for issue in issues:
+                print(f"  • {Fore.YELLOW}{issue}")
+            
+            print(Fore.CYAN + "\nOptions:")
+            print("  1. Fix issues and try again")
+            print("  2. Continue anyway (not recommended)")
+            print("  3. Cancel")
+            
+            choice = input("\nChoose option (1-3): ").strip()
+            if choice == "2":
+                print(Fore.YELLOW + "⚠️  Proceeding with issues...")
+            else:
+                print(Fore.CYAN + "🚫 Save canceled.")
+                return
+        else:
+            print(Fore.GREEN + "✅ Validation passed!")
     
     # Step 1: Stage all changes
     if config.get("auto_stage", True):

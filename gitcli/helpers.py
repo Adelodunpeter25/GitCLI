@@ -79,7 +79,8 @@ def get_config():
         "auto_push": True,
         "auto_stage": True,
         "commit_message_template": None,
-        "learn_from_history": True
+        "learn_from_history": True,
+        "pre_save_validation": True
     }
 
 def save_config(config):
@@ -156,3 +157,97 @@ def generate_commit_message():
             return f"Update {', '.join(file_names)}"
         else:
             return f"Update {file_count} files"
+
+
+def check_for_conflicts():
+    """Check if there are merge conflicts in working directory"""
+    result = run_command("git diff --name-only --diff-filter=U")
+    return bool(result and result.strip())
+
+
+def validate_changes():
+    """
+    Validate changes before committing
+    Returns: (is_valid, issues_list)
+    """
+    issues = []
+    
+    # Get all changed files (both staged and unstaged)
+    changed_files = run_command("git diff --name-only HEAD")
+    if not changed_files:
+        return True, []
+    
+    files = changed_files.strip().split('\n')
+    
+    # Check each file for issues
+    for filepath in files:
+        if not os.path.exists(filepath):
+            continue
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            
+            # Check for conflict markers
+            if any(marker in content for marker in ['<<<<<<<', '>>>>>>>', '=======']):
+                issues.append(f"Conflict markers found in: {filepath}")
+            
+            # Check for debug statements
+            debug_patterns = [
+                'console.log(',
+                'console.debug(',
+                'debugger;',
+                'print(',
+                'pdb.set_trace()',
+                'import pdb',
+                'binding.pry',
+                'var_dump(',
+                'dd(',
+            ]
+            
+            for pattern in debug_patterns:
+                if pattern in content:
+                    issues.append(f"Debug statement '{pattern}' found in: {filepath}")
+                    break
+            
+            # Check for common secret patterns
+            secret_patterns = [
+                ('API_KEY', 'API key'),
+                ('SECRET_KEY', 'Secret key'),
+                ('PASSWORD', 'Password'),
+                ('PRIVATE_KEY', 'Private key'),
+                ('ACCESS_TOKEN', 'Access token'),
+            ]
+            
+            for pattern, name in secret_patterns:
+                # Look for pattern = "value" or pattern: "value"
+                if f'{pattern} = "' in content or f'{pattern}: "' in content or f'{pattern}="' in content:
+                    # Check if it's not a placeholder
+                    if 'your_' not in content.lower() and 'example' not in content.lower():
+                        issues.append(f"Possible {name} found in: {filepath}")
+                        break
+        
+        except Exception:
+            # Skip files that can't be read (binary, etc.)
+            continue
+    
+    return len(issues) == 0, issues
+
+
+def check_large_files():
+    """Check for large files (>10MB)"""
+    large_files = []
+    changed_files = run_command("git diff --name-only HEAD")
+    
+    if not changed_files:
+        return []
+    
+    files = changed_files.strip().split('\n')
+    
+    for filepath in files:
+        if os.path.exists(filepath):
+            size_mb = os.path.getsize(filepath) / (1024 * 1024)
+            if size_mb > 10:
+                large_files.append((filepath, size_mb))
+    
+    return large_files
