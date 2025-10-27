@@ -131,8 +131,8 @@ elif [ "$INSTALL_METHOD" = "2" ] || [ "$INSTALL_METHOD" = "github" ]; then
         echo -e "${GREEN}✅ Found pipx, using isolated installation${NC}"
         pipx install . --force
     else
-        echo -e "${YELLOW}⚠️  pipx not found, using pip with --user flag${NC}"
-        pip3 install --user -e .
+        echo -e "${YELLOW}⚠️  pipx not found, using pip${NC}"
+        pip3 install --user .
         
         # Ensure ~/.local/bin is in PATH
         if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
