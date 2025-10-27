@@ -23,22 +23,17 @@ from .git_stash import (
     stash_drop, stash_show
 )
 from .git_conflicts import resolve_conflicts, check_conflicts
-from .smart_workflows import (
-    smart_save, smart_work, smart_done, smart_sync, 
-    smart_undo, smart_status
-)
+from .git_operations import smart_save
+from .helpers import get_config, save_config
 
 # Initialize colorama
 init(autoreset=True)
 
-# Tab completion - Smart commands first, then advanced
+# Tab completion
 COMMANDS = [
-    # Smart workflows (recommended)
-    "save", "work", "done", "sync", "undo", "status",
-    # Advanced commands
-    "commit", "push", "pull", "stage", "log", "diff", "diff-staged",
+    "save", "config", "commit", "push", "pull", "status", "stage", "log", "diff", "diff-staged",
     "switch-branch", "add-branch", "delete-branch", "rename-branch", "list-branch", 
-    "quick-push", "qp", "fetch", "clone", "remotes", "reset", 
+    "quick-push", "qp", "sync", "fetch", "clone", "remotes", "reset", 
     "amend", "hooks", "list-hooks", "stash", "stash-pop", "stash-apply", 
     "stash-list", "stash-drop", "stash-show", "resolve-conflicts", "check-conflicts",
     "help", "quit"
@@ -66,11 +61,9 @@ def show_welcome():
     print(Fore.CYAN + f"  Repository: " + Fore.WHITE + f"{repo}")
     print(Fore.CYAN + f"  Branch: " + Fore.WHITE + f"{branch}")
     print(Fore.MAGENTA + Style.BRIGHT + "=" * 60)
-    print(Fore.GREEN + "\n� Quick Start':")
-    print(Fore.CYAN + "  save" + Fore.WHITE + "  - Smart save your work")
-    print(Fore.CYAN + "  work" + Fore.WHITE + "  - Start working on a branch")
-    print(Fore.CYAN + "  done" + Fore.WHITE + "  - Finish and push your work")
-    print(Fore.CYAN + "  sync" + Fore.WHITE + "  - Sync with remote")
+    print(Fore.GREEN + "\n🚀 Quick Start:")
+    print(Fore.CYAN + "  save" + Fore.WHITE + "           - Stage, commit, and push")
+    print(Fore.CYAN + "  save <message>" + Fore.WHITE + " - Save with commit message")
     print(Fore.YELLOW + "\n💡 Type 'help' for all commands | Press Tab for auto-complete\n")
 
 def show_help():
@@ -78,15 +71,12 @@ def show_help():
     print("\n" + Fore.CYAN + Style.BRIGHT + "📚 GitCLI Commands")
     print(Fore.CYAN + "=" * 60)
     
-    print(Fore.MAGENTA + Style.BRIGHT + "\n🚀 Smart Workflows (Recommended)")
+    print(Fore.MAGENTA + Style.BRIGHT + "\n🚀 Quick Commands")
     print(Fore.CYAN + "-" * 60)
     smart_commands = [
-        ("save", "Smart save: commit, stash, or push"),
-        ("work <branch>", "Start working on a feature branch"),
-        ("done", "Finish work: commit, push, switch back"),
-        ("sync", "Sync with remote (auto-handles conflicts)"),
-        ("undo", "Smart undo last action"),
-        ("status", "Enhanced status with all info"),
+        ("save", "Stage, commit, and push"),
+        ("save <message>", "Save with inline commit message"),
+        ("config", "Manage GitCLI settings"),
     ]
     for cmd, desc in smart_commands:
         print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
@@ -157,7 +147,7 @@ def show_help():
         print(Fore.GREEN + f"  {cmd.ljust(20)}" + Fore.WHITE + f"{desc}")
     
     print(Fore.CYAN + "\n" + "=" * 60)
-    print(Fore.YELLOW + "💡 Tip: Use smart workflows for faster, automated Git operations!")
+    print(Fore.YELLOW + "💡 Tip: Use 'gitcli save' for quick stage, commit, and push!")
     print(Fore.CYAN + "=" * 60 + "\n")
 
 def show_prompt():
@@ -194,17 +184,9 @@ def execute_command(command, args=None):
     """Execute a single command"""
     # Smart workflows
     if command == "save":
-        smart_save()
-    elif command == "work":
-        smart_work(args[0] if args else None)
-    elif command == "done":
-        smart_done()
-    elif command == "sync":
-        smart_sync()
-    elif command == "undo":
-        smart_undo()
-    elif command == "status":
-        smart_status()
+        # Handle inline commit message: gitcli save commit message here
+        commit_msg = " ".join(args) if args else None
+        smart_save(commit_msg)
     # Original commands
     elif command == "commit":
         commit_changes()
@@ -262,11 +244,63 @@ def execute_command(command, args=None):
         rename_branch()
     elif command == "list-branch":
         list_branches()
+    elif command == "config":
+        manage_config()
     elif command == "help":
         show_help()
     else:
         return False
     return True
+
+
+def manage_config():
+    """Manage GitCLI configuration"""
+    config = get_config()
+    
+    print(Fore.CYAN + "\n⚙️  GitCLI Configuration")
+    print(Fore.CYAN + "="*60)
+    print(Fore.CYAN + "\nCurrent Settings:")
+    print(f"  1. Auto-stage changes: {Fore.GREEN if config.get('auto_stage', True) else Fore.RED}{config.get('auto_stage', True)}")
+    print(f"  2. Auto-push prompt: {Fore.GREEN if config.get('auto_push', True) else Fore.RED}{config.get('auto_push', True)}")
+    print(f"  3. Learn from commit history: {Fore.GREEN if config.get('learn_from_history', True) else Fore.RED}{config.get('learn_from_history', True)}")
+    print(Fore.CYAN + "\n" + "="*60)
+    
+    print(Fore.CYAN + "\nOptions:")
+    print("  1. Toggle auto-stage")
+    print("  2. Toggle auto-push prompt")
+    print("  3. Toggle learn from history")
+    print("  4. Reset to defaults")
+    print("  5. Back")
+    
+    choice = input("\nChoose option (1-5): ").strip()
+    
+    if choice == "1":
+        config["auto_stage"] = not config.get("auto_stage", True)
+        save_config(config)
+        status = "enabled" if config["auto_stage"] else "disabled"
+        print(Fore.GREEN + f"✅ Auto-stage {status}!")
+    elif choice == "2":
+        config["auto_push"] = not config.get("auto_push", True)
+        save_config(config)
+        status = "enabled" if config["auto_push"] else "disabled"
+        print(Fore.GREEN + f"✅ Auto-push prompt {status}!")
+    elif choice == "3":
+        config["learn_from_history"] = not config.get("learn_from_history", True)
+        save_config(config)
+        status = "enabled" if config["learn_from_history"] else "disabled"
+        print(Fore.GREEN + f"✅ Learn from history {status}!")
+    elif choice == "4":
+        config = {
+            "auto_push": True,
+            "auto_stage": True,
+            "learn_from_history": True
+        }
+        save_config(config)
+        print(Fore.GREEN + "✅ Configuration reset to defaults!")
+    elif choice == "5":
+        return
+    else:
+        print(Fore.RED + "❌ Invalid option.")
 
 def main():
     # Check for command-line arguments

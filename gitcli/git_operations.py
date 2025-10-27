@@ -4,8 +4,97 @@ from colorama import Fore
 from yaspin import yaspin
 from .helpers import (
     run_command, send_notification, get_current_branch,
-    has_staged_changes, has_unstaged_changes, has_any_changes, has_remote, display_command
+    has_staged_changes, has_unstaged_changes, has_any_changes, has_remote, display_command,
+    get_config, generate_commit_message
 )
+
+
+def smart_save(commit_message=None):
+    """
+    Smart save command with configuration support:
+    1. Automatically stage all changes
+    2. Smart commit message with suggestions
+    3. Configurable auto-push
+    """
+    branch = get_current_branch()
+    config = get_config()
+    
+    # Check if there are any changes
+    if not has_any_changes():
+        # Check for unpushed commits
+        if has_remote():
+            ahead = run_command("git rev-list --count @{u}..HEAD 2>/dev/null")
+            if ahead and int(ahead) > 0:
+                print(Fore.CYAN + f"\n📤 You have {ahead} unpushed commit(s) on '{branch}'")
+                
+                if config.get("auto_push", True):
+                    push = input("Push to remote? (Y/n): ").lower()
+                    if push != "n":
+                        push_changes()
+                else:
+                    print(Fore.YELLOW + "💡 Auto-push is disabled. Use 'gitcli push' to push manually.")
+            else:
+                print(Fore.GREEN + "\n✅ Everything is saved and up to date!")
+        else:
+            print(Fore.GREEN + "\n✅ No changes to save!")
+        return
+    
+    # Step 1: Stage all changes
+    if config.get("auto_stage", True):
+        print(Fore.CYAN + "\n📦 Staging all changes...")
+        with yaspin(text="Staging...", color="cyan") as spinner:
+            run_command("git add .", capture_output=False)
+            spinner.ok("✅")
+        
+        # Count staged files
+        staged_files = run_command("git diff --cached --name-only")
+        if staged_files:
+            file_list = staged_files.strip().split('\n')
+            file_count = len(file_list)
+            print(Fore.GREEN + f"✅ {file_count} file(s) staged")
+    
+    # Step 2: Get commit message with smart suggestions
+    if not commit_message:
+        # Generate smart default message
+        if config.get("learn_from_history", True):
+            default_message = generate_commit_message()
+        else:
+            default_message = "Update files"
+        
+        print(Fore.CYAN + f"\n📝 Commit message (press Enter to use default):")
+        print(Fore.YELLOW + f"Default: \"{default_message}\"")
+        user_input = input(Fore.CYAN + "> " + Fore.WHITE).strip()
+        
+        if user_input:
+            commit_message = user_input
+        else:
+            commit_message = default_message
+            print(Fore.GREEN + f"✅ Using: \"{commit_message}\"")
+    
+    # Commit
+    with yaspin(text="Committing...", color="cyan") as spinner:
+        result = run_command(f'git commit -m "{commit_message}"', capture_output=False)
+        if result is not None:
+            spinner.ok("✅")
+            print(Fore.GREEN + "✅ Changes committed!")
+        else:
+            spinner.fail("❌")
+            return
+    
+    # Step 3: Push based on configuration
+    if has_remote():
+        if config.get("auto_push", True):
+            push = input(Fore.CYAN + "\nPush to remote? (Y/n): ").lower()
+            if push != "n":
+                push_changes()
+            else:
+                print(Fore.GREEN + "\n✅ Staged and committed successfully!")
+        else:
+            print(Fore.GREEN + "\n✅ Staged and committed successfully!")
+            print(Fore.YELLOW + "💡 Auto-push is disabled. Use 'gitcli push' to push manually.")
+    else:
+        print(Fore.YELLOW + "\n💡 No remote configured. Changes committed locally.")
+        print(Fore.GREEN + "✅ Staged and committed successfully!")
 
 def commit_changes():
     if not has_staged_changes():

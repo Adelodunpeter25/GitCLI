@@ -1,301 +1,13 @@
 import os
 import stat
 import json
+import glob
 from colorama import Fore
 from .helpers import run_command, display_command
-
-HOOKS_DIR = ".git/hooks"
-CONFIG_FILE = ".gitcli-hooks.json"
-
-# Language-specific commands
-LANGUAGE_TOOLS = {
-    "python": {
-        "name": "Python",
-        "linters": {
-            "ruff": "ruff check .",
-            "flake8": "flake8 .",
-            "pylint": "pylint **/*.py",
-            "mypy": "mypy .",
-        },
-        "formatters": {
-            "ruff": "ruff format .",
-            "black": "black .",
-            "autopep8": "autopep8 --in-place --recursive .",
-        },
-        "test_runners": {
-            "pytest": "pytest",
-            "unittest": "python -m unittest discover",
-        },
-        "detection": ["*.py", "setup.py", "pyproject.toml", "requirements.txt"]
-    },
-    "javascript": {
-        "name": "JavaScript/TypeScript",
-        "linters": {
-            "eslint": "eslint .",
-            "tslint": "tslint -c tslint.json '**/*.ts'",
-        },
-        "formatters": {
-            "prettier": "prettier --write .",
-            "eslint-fix": "eslint --fix .",
-        },
-        "test_runners": {
-            "jest": "jest",
-            "npm-test": "npm test",
-            "vitest": "vitest run",
-        },
-        "detection": ["*.js", "*.ts", "package.json", "tsconfig.json"]
-    },
-    "go": {
-        "name": "Go",
-        "linters": {
-            "golint": "golint ./...",
-            "go-vet": "go vet ./...",
-            "staticcheck": "staticcheck ./...",
-        },
-        "formatters": {
-            "gofmt": "gofmt -w .",
-            "goimports": "goimports -w .",
-        },
-        "test_runners": {
-            "go-test": "go test ./...",
-        },
-        "detection": ["*.go", "go.mod"]
-    },
-    "rust": {
-        "name": "Rust",
-        "linters": {
-            "clippy": "cargo clippy -- -D warnings",
-        },
-        "formatters": {
-            "rustfmt": "cargo fmt",
-        },
-        "test_runners": {
-            "cargo-test": "cargo test",
-        },
-        "detection": ["*.rs", "Cargo.toml"]
-    },
-    "ruby": {
-        "name": "Ruby",
-        "linters": {
-            "rubocop": "rubocop",
-        },
-        "formatters": {
-            "rubocop-fix": "rubocop -a",
-        },
-        "test_runners": {
-            "rspec": "rspec",
-            "minitest": "ruby -Itest test/**/*_test.rb",
-        },
-        "detection": ["*.rb", "Gemfile"]
-    },
-}
-
-# Hook templates
-HOOK_TEMPLATES = {
-    "pre-commit": {
-        "name": "Pre-commit Hook",
-        "description": "Runs before each commit",
-        "templates": {
-            "linting": {
-                "name": "Code Linting",
-                "description": "Run linters before commit",
-                "requires_config": True,
-            },
-            "formatting": {
-                "name": "Auto-format Code",
-                "description": "Auto-format code before commit",
-                "requires_config": True,
-            },
-            "tests": {
-                "name": "Run Tests",
-                "description": "Run test suite before commit",
-                "requires_config": True,
-            },
-            "no-debug": {
-                "name": "Block Debug Code",
-                "description": "Prevent commits with debug statements",
-                "script": """#!/bin/sh
-# GitCLI: Block Debug Code Pre-commit Hook
-
-echo "🔍 Checking for debug statements..."
-
-# Check for common debug patterns
-if git diff --cached | grep -E "(console\\.log|debugger|pdb\\.set_trace|import pdb|binding\\.pry)" >/dev/null 2>&1; then
-    echo "❌ Debug statements found in staged files!"
-    echo "Please remove debug code before committing."
-    exit 1
-fi
-
-echo "✅ No debug statements found!"
-"""
-            },
-            "custom": {
-                "name": "Custom Commands",
-                "description": "Run your own custom commands",
-                "requires_config": True,
-            }
-        }
-    },
-    "pre-push": {
-        "name": "Pre-push Hook",
-        "description": "Runs before pushing to remote",
-        "templates": {
-            "tests": {
-                "name": "Run Full Test Suite",
-                "description": "Run all tests before push",
-                "requires_config": True,
-            },
-            "protect-main": {
-                "name": "Protect Main Branch",
-                "description": "Prevent direct pushes to main/master",
-                "script": """#!/bin/sh
-# GitCLI: Protect Main Branch Pre-push Hook
-
-current_branch=$(git symbolic-ref HEAD | sed -e 's,.*/\\(.*\\),\\1,')
-
-if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; then
-    echo "❌ Direct push to $current_branch is not allowed!"
-    echo "Please create a feature branch and submit a pull request."
-    exit 1
-fi
-
-echo "✅ Branch check passed!"
-"""
-            },
-            "build": {
-                "name": "Build Before Push",
-                "description": "Ensure project builds successfully",
-                "requires_config": True,
-            },
-            "custom": {
-                "name": "Custom Commands",
-                "description": "Run your own custom commands",
-                "requires_config": True,
-            }
-        }
-    },
-    "commit-msg": {
-        "name": "Commit Message Hook",
-        "description": "Validates commit message format",
-        "templates": {
-            "conventional": {
-                "name": "Conventional Commits",
-                "description": "Enforce conventional commit format",
-                "script": """#!/bin/sh
-# GitCLI: Conventional Commits Hook
-
-commit_msg_file=$1
-commit_msg=$(cat "$commit_msg_file")
-
-# Check for conventional commit format: type(scope): message
-if ! echo "$commit_msg" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\\(.+\\))?: .{1,}"; then
-    echo "❌ Invalid commit message format!"
-    echo ""
-    echo "Commit message must follow Conventional Commits format:"
-    echo "  type(scope): description"
-    echo ""
-    echo "Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert"
-    echo ""
-    echo "Examples:"
-    echo "  feat(auth): add login functionality"
-    echo "  fix(api): resolve null pointer exception"
-    echo "  docs: update README"
-    exit 1
-fi
-
-echo "✅ Commit message format valid!"
-"""
-            },
-            "min-length": {
-                "name": "Minimum Message Length",
-                "description": "Require minimum commit message length",
-                "script": """#!/bin/sh
-# GitCLI: Minimum Message Length Hook
-
-commit_msg_file=$1
-commit_msg=$(cat "$commit_msg_file")
-
-min_length=10
-
-if [ ${#commit_msg} -lt $min_length ]; then
-    echo "❌ Commit message too short!"
-    echo "Minimum length: $min_length characters"
-    echo "Current length: ${#commit_msg} characters"
-    exit 1
-fi
-
-echo "✅ Commit message length valid!"
-"""
-            },
-            "no-wip": {
-                "name": "Block WIP Commits",
-                "description": "Prevent commits with WIP in message",
-                "script": """#!/bin/sh
-# GitCLI: Block WIP Commits Hook
-
-commit_msg_file=$1
-commit_msg=$(cat "$commit_msg_file")
-
-if echo "$commit_msg" | grep -qiE "^(wip|work in progress)"; then
-    echo "❌ WIP commits are not allowed!"
-    echo "Please complete your work before committing."
-    exit 1
-fi
-
-echo "✅ Commit message valid!"
-"""
-            }
-        }
-    },
-    "post-commit": {
-        "name": "Post-commit Hook",
-        "description": "Runs after each commit",
-        "templates": {
-            "notify": {
-                "name": "Commit Notification",
-                "description": "Send notification after commit",
-                "script": """#!/bin/sh
-# GitCLI: Post-commit Notification Hook
-
-commit_msg=$(git log -1 --pretty=%B)
-commit_hash=$(git log -1 --pretty=%h)
-
-echo "✅ Commit $commit_hash created successfully!"
-
-# macOS notification
-if command -v osascript >/dev/null 2>&1; then
-    osascript -e "display notification \\"$commit_msg\\" with title \\"Commit Successful\\""
-fi
-
-# Linux notification
-if command -v notify-send >/dev/null 2>&1; then
-    notify-send "Commit Successful" "$commit_msg"
-fi
-"""
-            },
-            "backup": {
-                "name": "Auto Backup",
-                "description": "Create backup after commit",
-                "script": """#!/bin/sh
-# GitCLI: Auto Backup Post-commit Hook
-
-backup_dir="../.git-backups"
-timestamp=$(date +%Y%m%d_%H%M%S)
-repo_name=$(basename $(git rev-parse --show-toplevel))
-
-mkdir -p "$backup_dir"
-
-echo "💾 Creating backup..."
-git bundle create "$backup_dir/${repo_name}_${timestamp}.bundle" --all
-
-echo "✅ Backup created: ${repo_name}_${timestamp}.bundle"
-"""
-            }
-        }
-    }
-}
+from .hook_templates import HOOKS_DIR, CONFIG_FILE, LANGUAGE_TOOLS, HOOK_TEMPLATES
 
 
+# Utility functions
 def get_hooks_config():
     """Load hooks configuration"""
     if os.path.exists(CONFIG_FILE):
@@ -323,7 +35,6 @@ def detect_languages():
         for pattern in info["detection"]:
             if "*" in pattern:
                 # File pattern
-                import glob
                 if glob.glob(pattern, recursive=True):
                     detected.append(lang)
                     break
@@ -335,6 +46,7 @@ def detect_languages():
     return detected
 
 
+# Hook script generation
 def generate_hook_script(hook_type, template_key, config):
     """Generate hook script based on configuration"""
     template = HOOK_TEMPLATES[hook_type]["templates"][template_key]
@@ -437,6 +149,7 @@ def generate_hook_script(hook_type, template_key, config):
     return "\n".join(script_lines) + "\n"
 
 
+# Hook installation/management
 def install_hook(hook_type, template_key, hook_config=None):
     """Install a specific hook template"""
     if not os.path.exists(HOOKS_DIR):
@@ -510,101 +223,7 @@ def uninstall_hook(hook_type):
     return True
 
 
-def list_installed_hooks():
-    """List all installed hooks"""
-    if not os.path.exists(HOOKS_DIR):
-        print(Fore.RED + "❌ Not a git repository.")
-        return
-    
-    print(Fore.CYAN + "\n🪝 Installed Git Hooks:\n" + "-"*60)
-    
-    config = get_hooks_config()
-    enabled_hooks = config.get("enabled_hooks", {})
-    
-    hooks_found = False
-    for hook_file in os.listdir(HOOKS_DIR):
-        hook_path = os.path.join(HOOKS_DIR, hook_file)
-        if os.path.isfile(hook_path) and not hook_file.endswith('.sample') and not hook_file.endswith('.backup'):
-            hooks_found = True
-            # Check if executable
-            is_executable = os.access(hook_path, os.X_OK)
-            status = Fore.GREEN + "✅ Active" if is_executable else Fore.YELLOW + "⚠️  Not executable"
-            print(f"  {Fore.WHITE}{hook_file.ljust(20)} {status}")
-            
-            # Show configuration if available
-            if hook_file in enabled_hooks:
-                hook_info = enabled_hooks[hook_file]
-                template_name = hook_info.get("template", "unknown")
-                print(f"    {Fore.CYAN}Template: {template_name}")
-                
-                hook_config = hook_info.get("config", {})
-                if "languages" in hook_config:
-                    langs = list(hook_config["languages"].keys())
-                    print(f"    {Fore.CYAN}Languages: {', '.join(langs)}")
-                    for lang, tools in hook_config["languages"].items():
-                        for tool_type, tool_list in tools.items():
-                            if tool_list:
-                                print(f"      {Fore.YELLOW}{lang} {tool_type}: {', '.join(tool_list)}")
-                
-                if "custom_commands" in hook_config:
-                    print(f"    {Fore.CYAN}Custom commands:")
-                    for cmd in hook_config["custom_commands"]:
-                        print(f"      {Fore.YELLOW}• {cmd}")
-    
-    if not hooks_found:
-        print(Fore.YELLOW + "  No hooks installed.")
-    
-    print(Fore.CYAN + "-"*60 + "\n")
-
-
-def manage_hooks():
-    """Main hooks management interface"""
-    print(Fore.CYAN + "\n🪝 Git Hooks Management:")
-    print("  1. Install hook")
-    print("  2. Uninstall hook")
-    print("  3. List installed hooks")
-    print("  4. View hook templates")
-    print("  5. Back")
-    
-    choice = input("\nChoose option (1-5): ").strip()
-    
-    if choice == "1":
-        install_hook_menu()
-    elif choice == "2":
-        uninstall_hook_menu()
-    elif choice == "3":
-        list_installed_hooks()
-    elif choice == "4":
-        view_templates()
-    elif choice == "5":
-        return
-    else:
-        print(Fore.RED + "❌ Invalid option.")
-
-
-def install_hook_menu():
-    """Menu for installing hooks"""
-    print(Fore.CYAN + "\n📋 Available Hook Types:")
-    hook_types = list(HOOK_TEMPLATES.keys())
-    
-    for i, hook_type in enumerate(hook_types, 1):
-        hook_info = HOOK_TEMPLATES[hook_type]
-        print(f"  {i}. {Fore.WHITE}{hook_info['name']}{Fore.CYAN} - {hook_info['description']}")
-    
-    choice = input(f"\nChoose hook type (1-{len(hook_types)}): ").strip()
-    
-    try:
-        hook_index = int(choice) - 1
-        if hook_index < 0 or hook_index >= len(hook_types):
-            print(Fore.RED + "❌ Invalid option.")
-            return
-        
-        hook_type = hook_types[hook_index]
-        select_template(hook_type)
-    except ValueError:
-        print(Fore.RED + "❌ Invalid input.")
-
-
+# Configuration functions
 def configure_language_tools(template_key):
     """Configure language-specific tools for a template"""
     # Detect languages
@@ -724,6 +343,102 @@ def configure_custom_commands():
     return {"custom_commands": commands}
 
 
+# UI functions
+def list_installed_hooks():
+    """List all installed hooks"""
+    if not os.path.exists(HOOKS_DIR):
+        print(Fore.RED + "❌ Not a git repository.")
+        return
+    
+    print(Fore.CYAN + "\n🪝 Installed Git Hooks:\n" + "-"*60)
+    
+    config = get_hooks_config()
+    enabled_hooks = config.get("enabled_hooks", {})
+    
+    hooks_found = False
+    for hook_file in os.listdir(HOOKS_DIR):
+        hook_path = os.path.join(HOOKS_DIR, hook_file)
+        if os.path.isfile(hook_path) and not hook_file.endswith('.sample') and not hook_file.endswith('.backup'):
+            hooks_found = True
+            # Check if executable
+            is_executable = os.access(hook_path, os.X_OK)
+            status = Fore.GREEN + "✅ Active" if is_executable else Fore.YELLOW + "⚠️  Not executable"
+            print(f"  {Fore.WHITE}{hook_file.ljust(20)} {status}")
+            
+            # Show configuration if available
+            if hook_file in enabled_hooks:
+                hook_info = enabled_hooks[hook_file]
+                template_name = hook_info.get("template", "unknown")
+                print(f"    {Fore.CYAN}Template: {template_name}")
+                
+                hook_config = hook_info.get("config", {})
+                if "languages" in hook_config:
+                    langs = list(hook_config["languages"].keys())
+                    print(f"    {Fore.CYAN}Languages: {', '.join(langs)}")
+                    for lang, tools in hook_config["languages"].items():
+                        for tool_type, tool_list in tools.items():
+                            if tool_list:
+                                print(f"      {Fore.YELLOW}{lang} {tool_type}: {', '.join(tool_list)}")
+                
+                if "custom_commands" in hook_config:
+                    print(f"    {Fore.CYAN}Custom commands:")
+                    for cmd in hook_config["custom_commands"]:
+                        print(f"      {Fore.YELLOW}• {cmd}")
+    
+    if not hooks_found:
+        print(Fore.YELLOW + "  No hooks installed.")
+    
+    print(Fore.CYAN + "-"*60 + "\n")
+
+
+def manage_hooks():
+    """Main hooks management interface"""
+    print(Fore.CYAN + "\n🪝 Git Hooks Management:")
+    print("  1. Install hook")
+    print("  2. Uninstall hook")
+    print("  3. List installed hooks")
+    print("  4. View hook templates")
+    print("  5. Back")
+    
+    choice = input("\nChoose option (1-5): ").strip()
+    
+    if choice == "1":
+        install_hook_menu()
+    elif choice == "2":
+        uninstall_hook_menu()
+    elif choice == "3":
+        list_installed_hooks()
+    elif choice == "4":
+        view_templates()
+    elif choice == "5":
+        return
+    else:
+        print(Fore.RED + "❌ Invalid option.")
+
+
+def install_hook_menu():
+    """Menu for installing hooks"""
+    print(Fore.CYAN + "\n📋 Available Hook Types:")
+    hook_types = list(HOOK_TEMPLATES.keys())
+    
+    for i, hook_type in enumerate(hook_types, 1):
+        hook_info = HOOK_TEMPLATES[hook_type]
+        print(f"  {i}. {Fore.WHITE}{hook_info['name']}{Fore.CYAN} - {hook_info['description']}")
+    
+    choice = input(f"\nChoose hook type (1-{len(hook_types)}): ").strip()
+    
+    try:
+        hook_index = int(choice) - 1
+        if hook_index < 0 or hook_index >= len(hook_types):
+            print(Fore.RED + "❌ Invalid option.")
+            return
+        
+        hook_type = hook_types[hook_index]
+        select_template(hook_type)
+    except ValueError:
+        print(Fore.RED + "❌ Invalid input.")
+
+
 def select_template(hook_type):
     """Select a template for a hook type"""
     templates = HOOK_TEMPLATES[hook_type]["templates"]
@@ -820,3 +535,4 @@ def view_templates():
             print(f"  • {Fore.WHITE}{template['name']}{Fore.CYAN} - {template['description']}")
     
     print(Fore.CYAN + "\n" + "="*60 + "\n")
+
