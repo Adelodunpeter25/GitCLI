@@ -86,9 +86,28 @@ if [ "$INSTALL_METHOD" = "1" ]; then
         pipx install gitcli-automation --force
         echo -e "${GREEN}✅ GitCLI installed successfully with pipx!${NC}"
     else
-        echo -e "${YELLOW}⚠️  pipx not found, using pip with --user flag${NC}"
-        pip3 install --user gitcli-automation --upgrade
-        echo -e "${GREEN}✅ GitCLI installed successfully with pip!${NC}"
+        echo -e "${YELLOW}⚠️  pipx not found${NC}"
+        echo -e "${CYAN}Installing pipx for better package management...${NC}"
+        
+        # Try to install pipx
+        if python3 -m pip install --user pipx 2>/dev/null; then
+            # Add pipx to PATH for this session
+            export PATH="$HOME/.local/bin:$PATH"
+            python3 -m pipx ensurepath 2>/dev/null || true
+            
+            echo -e "${GREEN}✅ pipx installed!${NC}"
+            pipx install gitcli-automation --force
+            echo -e "${GREEN}✅ GitCLI installed successfully with pipx!${NC}"
+        else
+            echo -e "${RED}❌ Could not install pipx${NC}"
+            echo -e "${YELLOW}💡 Please install pipx manually:${NC}"
+            if [ "$MACHINE" = "Mac" ]; then
+                echo -e "  ${CYAN}brew install pipx${NC}"
+            else
+                echo -e "  ${CYAN}python3 -m pip install --user pipx${NC}"
+            fi
+            exit 1
+        fi
         
         # Ensure ~/.local/bin is in PATH
         if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
@@ -131,8 +150,27 @@ elif [ "$INSTALL_METHOD" = "2" ] || [ "$INSTALL_METHOD" = "github" ]; then
         echo -e "${GREEN}✅ Found pipx, using isolated installation${NC}"
         pipx install . --force
     else
-        echo -e "${YELLOW}⚠️  pipx not found, using pip${NC}"
-        pip3 install --user .
+        echo -e "${YELLOW}⚠️  pipx not found${NC}"
+        echo -e "${CYAN}Installing pipx for better package management...${NC}"
+        
+        # Try to install pipx
+        if python3 -m pip install --user pipx 2>/dev/null; then
+            # Add pipx to PATH for this session
+            export PATH="$HOME/.local/bin:$PATH"
+            python3 -m pipx ensurepath 2>/dev/null || true
+            
+            echo -e "${GREEN}✅ pipx installed!${NC}"
+            pipx install . --force
+        else
+            echo -e "${RED}❌ Could not install pipx${NC}"
+            echo -e "${YELLOW}💡 Please install pipx manually:${NC}"
+            if [ "$MACHINE" = "Mac" ]; then
+                echo -e "  ${CYAN}brew install pipx${NC}"
+            else
+                echo -e "  ${CYAN}python3 -m pip install --user pipx${NC}"
+            fi
+            exit 1
+        fi
         
         # Ensure ~/.local/bin is in PATH
         if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
