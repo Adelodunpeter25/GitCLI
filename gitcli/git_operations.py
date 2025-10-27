@@ -5,7 +5,8 @@ from yaspin import yaspin
 from .helpers import (
     run_command, send_notification, get_current_branch,
     has_staged_changes, has_unstaged_changes, has_any_changes, has_remote, display_command,
-    get_config, generate_commit_message, check_for_conflicts, validate_changes, check_large_files
+    get_config, generate_commit_message, check_for_conflicts, validate_changes, check_large_files,
+    run_formatter
 )
 
 
@@ -50,23 +51,39 @@ def smart_save(commit_message=None):
             resolve_conflicts()
         return
     
-    # Step 0.5: Pre-save validation
+    # Step 0.5: Auto-fix formatting
+    if config.get("auto_fix_formatting", False):
+        print(Fore.CYAN + "\n🎨 Auto-formatting code...")
+        if run_formatter():
+            print(Fore.GREEN + "✅ Code formatted!")
+            # Re-check for changes after formatting
+            if not has_any_changes():
+                print(Fore.GREEN + "✅ No changes after formatting!")
+                return
+        else:
+            print(Fore.YELLOW + "💡 No formatters found or nothing to format")
+    
+    # Step 0.6: Pre-save validation
     if config.get("pre_save_validation", True):
         print(Fore.CYAN + "\n🔍 Validating changes...")
         
+        validation_rules = config.get("validation_rules", {})
+        
         # Check for large files
-        large_files = check_large_files()
-        if large_files:
-            print(Fore.YELLOW + "\n⚠️  Large files detected:")
-            for filepath, size_mb in large_files:
-                print(f"  • {filepath} ({size_mb:.1f} MB)")
-            proceed = input(Fore.YELLOW + "Continue anyway? (y/N): ").lower()
-            if proceed != "y":
-                print(Fore.CYAN + "🚫 Save canceled.")
-                return
+        if validation_rules.get("check_large_files", True):
+            large_files = check_large_files()
+            if large_files:
+                max_size = validation_rules.get("max_file_size_mb", 10)
+                print(Fore.YELLOW + f"\n⚠️  Large files detected (>{max_size}MB):")
+                for filepath, size_mb in large_files:
+                    print(f"  • {filepath} ({size_mb:.1f} MB)")
+                proceed = input(Fore.YELLOW + "Continue anyway? (y/N): ").lower()
+                if proceed != "y":
+                    print(Fore.CYAN + "🚫 Save canceled.")
+                    return
         
         # Validate for issues
-        is_valid, issues = validate_changes()
+        is_valid, issues = validate_changes(validation_rules)
         if not is_valid:
             print(Fore.RED + "\n⚠️  Issues found:")
             for issue in issues:
@@ -131,6 +148,32 @@ def smart_save(commit_message=None):
     # Step 3: Push based on configuration
     if has_remote():
         if config.get("auto_push", True):
+            # Auto-pull before push if enabled
+            if config.get("auto_pull_before_push", True):
+                print(Fore.CYAN + "\n⬇️  Pulling latest changes before push...")
+                with yaspin(text="Pulling...", color="cyan") as spinner:
+                    result = subprocess.run("git pull --rebase", shell=True, capture_output=True, text=True)
+                    if result.returncode == 0:
+                        spinner.ok("✅")
+                        if "Already up to date" not in result.stdout:
+                            print(Fore.GREEN + "✅ Pulled latest changes!")
+                            # Show what changed
+                            print(Fore.CYAN + "Changes from remote:")
+                            subprocess.run("git log --oneline HEAD@{1}..HEAD", shell=True)
+                        else:
+                            print(Fore.GREEN + "✅ Already up to date!")
+                    else:
+                        spinner.fail("❌")
+                        if "CONFLICT" in result.stdout or "CONFLICT" in result.stderr:
+                            print(Fore.RED + "❌ Conflicts during pull!")
+                            print(Fore.YELLOW + "💡 Resolve conflicts and try again.")
+                            return
+                        else:
+                            print(Fore.YELLOW + f"⚠️  Pull failed: {result.stderr}")
+                            proceed = input("Continue with push anyway? (y/N): ").lower()
+                            if proceed != "y":
+                                return
+            
             push = input(Fore.CYAN + "\nPush to remote? (Y/n): ").lower()
             if push != "n":
                 push_changes()
@@ -168,6 +211,7 @@ def commit_changes():
 
 def push_changes():
     branch = get_current_branch()
+    config = get_config()
     
     if not has_remote():
         print(Fore.RED + "❌ No remote repository configured.")
@@ -189,18 +233,35 @@ def push_changes():
             spinner.fail("❌")
             if "rejected" in result.stderr and "non-fast-forward" in result.stderr:
                 print(Fore.YELLOW + "\n⚠️  Push rejected: Your branch is behind the remote branch.")
-                force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
-                if force == "yes":
-                    with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
-                        force_result = run_command("git push --force", capture_output=False)
-                        if force_result is not None:
+                
+                # Check confirm_force_push config
+                if config.get("confirm_force_push", True):
+                    force = input(Fore.RED + "Do you want to force push and overwrite the remote? (yes/N): ").lower()
+                    if force != "yes":
+                        print(Fore.CYAN + "🚫 Force push canceled.")
+                        return
+                else:
+                    print(Fore.YELLOW + "⚠️  Force pushing (confirm_force_push is disabled)...")
+                
+                with yaspin(text=f"Force pushing to '{branch}'...", color="red") as spinner2:
+                    force_result = run_command("git push --force", capture_output=False)
+                    if force_result is not None:
+                        spinner2.ok("🚀")
+                        print(Fore.GREEN + f"✅ Force pushed to '{branch}'!")
+                        send_notification("GitCLI", f"Force push to '{branch}' complete!")
+                    else:
+                        spinner2.fail("❌")
+            elif "no upstream" in result.stderr:
+                print(Fore.YELLOW + "\n⚠️  No upstream branch set.")
+                setup = input("Set upstream and push? (Y/n): ").lower()
+                if setup != "n":
+                    with yaspin(text="Setting upstream and pushing...", color="magenta") as spinner2:
+                        result2 = run_command(f"git push -u origin {branch}", capture_output=False)
+                        if result2 is not None:
                             spinner2.ok("🚀")
-                            print(Fore.GREEN + f"✅ Force pushed to '{branch}'!")
-                            send_notification("GitCLI", f"Force push to '{branch}' complete!")
+                            print(Fore.GREEN + f"✅ Pushed to '{branch}' and set upstream!")
                         else:
                             spinner2.fail("❌")
-                else:
-                    print(Fore.CYAN + "🚫 Force push canceled.")
             else:
                 print(Fore.RED + f"❌ Push failed: {result.stderr.strip()}")
 

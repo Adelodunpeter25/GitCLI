@@ -264,6 +264,9 @@ def manage_config():
     print(f"  2. Auto-push prompt: {Fore.GREEN if config.get('auto_push', True) else Fore.RED}{config.get('auto_push', True)}")
     print(f"  3. Learn from commit history: {Fore.GREEN if config.get('learn_from_history', True) else Fore.RED}{config.get('learn_from_history', True)}")
     print(f"  4. Pre-save validation: {Fore.GREEN if config.get('pre_save_validation', True) else Fore.RED}{config.get('pre_save_validation', True)}")
+    print(f"  5. Auto-pull before push: {Fore.GREEN if config.get('auto_pull_before_push', True) else Fore.RED}{config.get('auto_pull_before_push', True)}")
+    print(f"  6. Auto-fix formatting: {Fore.GREEN if config.get('auto_fix_formatting', False) else Fore.RED}{config.get('auto_fix_formatting', False)}")
+    print(f"  7. Confirm force push: {Fore.GREEN if config.get('confirm_force_push', True) else Fore.RED}{config.get('confirm_force_push', True)}")
     print(Fore.CYAN + "\n" + "="*60)
     
     print(Fore.CYAN + "\nOptions:")
@@ -271,10 +274,14 @@ def manage_config():
     print("  2. Toggle auto-push prompt")
     print("  3. Toggle learn from history")
     print("  4. Toggle pre-save validation")
-    print("  5. Reset to defaults")
-    print("  6. Back")
+    print("  5. Toggle auto-pull before push")
+    print("  6. Toggle auto-fix formatting")
+    print("  7. Toggle confirm force push")
+    print("  8. Configure validation rules")
+    print("  9. Reset to defaults")
+    print("  0. Back")
     
-    choice = input("\nChoose option (1-6): ").strip()
+    choice = input("\nChoose option (0-9): ").strip()
     
     if choice == "1":
         config["auto_stage"] = not config.get("auto_stage", True)
@@ -296,21 +303,89 @@ def manage_config():
         save_config(config)
         status = "enabled" if config["pre_save_validation"] else "disabled"
         print(Fore.GREEN + f"✅ Pre-save validation {status}!")
-        if status == "enabled":
-            print(Fore.YELLOW + "💡 Validation checks for: conflicts, debug code, secrets, large files")
     elif choice == "5":
-        config = {
-            "auto_push": True,
-            "auto_stage": True,
-            "learn_from_history": True,
-            "pre_save_validation": True
-        }
+        config["auto_pull_before_push"] = not config.get("auto_pull_before_push", True)
+        save_config(config)
+        status = "enabled" if config["auto_pull_before_push"] else "disabled"
+        print(Fore.GREEN + f"✅ Auto-pull before push {status}!")
+    elif choice == "6":
+        config["auto_fix_formatting"] = not config.get("auto_fix_formatting", False)
+        save_config(config)
+        status = "enabled" if config["auto_fix_formatting"] else "disabled"
+        print(Fore.GREEN + f"✅ Auto-fix formatting {status}!")
+        if status == "enabled":
+            print(Fore.YELLOW + "💡 Will run formatters (black, prettier, etc.) before committing")
+    elif choice == "7":
+        config["confirm_force_push"] = not config.get("confirm_force_push", True)
+        save_config(config)
+        status = "enabled" if config["confirm_force_push"] else "disabled"
+        print(Fore.GREEN + f"✅ Confirm force push {status}!")
+        if status == "disabled":
+            print(Fore.RED + "⚠️  WARNING: Force pushes will happen without confirmation!")
+    elif choice == "8":
+        configure_validation_rules(config)
+    elif choice == "9":
+        config = get_config()  # Get fresh defaults
         save_config(config)
         print(Fore.GREEN + "✅ Configuration reset to defaults!")
-    elif choice == "6":
+    elif choice == "0":
         return
     else:
         print(Fore.RED + "❌ Invalid option.")
+
+
+def configure_validation_rules(config):
+    """Configure validation rules"""
+    rules = config.get("validation_rules", {})
+    
+    print(Fore.CYAN + "\n🔍 Validation Rules Configuration")
+    print(Fore.CYAN + "="*60)
+    print(f"  1. Check debug statements: {Fore.GREEN if rules.get('check_debug', True) else Fore.RED}{rules.get('check_debug', True)}")
+    print(f"  2. Check secrets: {Fore.GREEN if rules.get('check_secrets', True) else Fore.RED}{rules.get('check_secrets', True)}")
+    print(f"  3. Check conflicts: {Fore.GREEN if rules.get('check_conflicts', True) else Fore.RED}{rules.get('check_conflicts', True)}")
+    print(f"  4. Check large files: {Fore.GREEN if rules.get('check_large_files', True) else Fore.RED}{rules.get('check_large_files', True)}")
+    print(f"  5. Max file size: {Fore.YELLOW}{rules.get('max_file_size_mb', 10)} MB")
+    print(Fore.CYAN + "="*60)
+    
+    print(Fore.CYAN + "\nOptions:")
+    print("  1. Toggle check debug")
+    print("  2. Toggle check secrets")
+    print("  3. Toggle check conflicts")
+    print("  4. Toggle check large files")
+    print("  5. Set max file size")
+    print("  6. Back")
+    
+    choice = input("\nChoose option (1-6): ").strip()
+    
+    if choice == "1":
+        rules["check_debug"] = not rules.get("check_debug", True)
+    elif choice == "2":
+        rules["check_secrets"] = not rules.get("check_secrets", True)
+    elif choice == "3":
+        rules["check_conflicts"] = not rules.get("check_conflicts", True)
+    elif choice == "4":
+        rules["check_large_files"] = not rules.get("check_large_files", True)
+    elif choice == "5":
+        try:
+            size = int(input("Enter max file size in MB: ").strip())
+            if size > 0:
+                rules["max_file_size_mb"] = size
+                print(Fore.GREEN + f"✅ Max file size set to {size} MB!")
+            else:
+                print(Fore.RED + "❌ Size must be positive!")
+        except ValueError:
+            print(Fore.RED + "❌ Invalid number!")
+    elif choice == "6":
+        config["validation_rules"] = rules
+        save_config(config)
+        return
+    else:
+        print(Fore.RED + "❌ Invalid option!")
+        return
+    
+    config["validation_rules"] = rules
+    save_config(config)
+    print(Fore.GREEN + "✅ Validation rules updated!")
 
 def main():
     # Check for command-line arguments

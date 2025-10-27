@@ -80,7 +80,17 @@ def get_config():
         "auto_stage": True,
         "commit_message_template": None,
         "learn_from_history": True,
-        "pre_save_validation": True
+        "pre_save_validation": True,
+        "auto_pull_before_push": True,
+        "auto_fix_formatting": False,
+        "confirm_force_push": True,
+        "validation_rules": {
+            "check_debug": True,
+            "check_secrets": True,
+            "check_conflicts": True,
+            "check_large_files": True,
+            "max_file_size_mb": 10
+        }
     }
 
 def save_config(config):
@@ -165,11 +175,15 @@ def check_for_conflicts():
     return bool(result and result.strip())
 
 
-def validate_changes():
+def validate_changes(validation_rules=None):
     """
     Validate changes before committing
     Returns: (is_valid, issues_list)
     """
+    if validation_rules is None:
+        config = get_config()
+        validation_rules = config.get("validation_rules", {})
+    
     issues = []
     
     # Get all changed files (both staged and unstaged)
@@ -189,43 +203,46 @@ def validate_changes():
                 content = f.read()
             
             # Check for conflict markers
-            if any(marker in content for marker in ['<<<<<<<', '>>>>>>>', '=======']):
-                issues.append(f"Conflict markers found in: {filepath}")
+            if validation_rules.get("check_conflicts", True):
+                if any(marker in content for marker in ['<<<<<<<', '>>>>>>>', '=======']):
+                    issues.append(f"Conflict markers found in: {filepath}")
             
             # Check for debug statements
-            debug_patterns = [
-                'console.log(',
-                'console.debug(',
-                'debugger;',
-                'print(',
-                'pdb.set_trace()',
-                'import pdb',
-                'binding.pry',
-                'var_dump(',
-                'dd(',
-            ]
-            
-            for pattern in debug_patterns:
-                if pattern in content:
-                    issues.append(f"Debug statement '{pattern}' found in: {filepath}")
-                    break
+            if validation_rules.get("check_debug", True):
+                debug_patterns = [
+                    'console.log(',
+                    'console.debug(',
+                    'debugger;',
+                    'print(',
+                    'pdb.set_trace()',
+                    'import pdb',
+                    'binding.pry',
+                    'var_dump(',
+                    'dd(',
+                ]
+                
+                for pattern in debug_patterns:
+                    if pattern in content:
+                        issues.append(f"Debug statement '{pattern}' found in: {filepath}")
+                        break
             
             # Check for common secret patterns
-            secret_patterns = [
-                ('API_KEY', 'API key'),
-                ('SECRET_KEY', 'Secret key'),
-                ('PASSWORD', 'Password'),
-                ('PRIVATE_KEY', 'Private key'),
-                ('ACCESS_TOKEN', 'Access token'),
-            ]
-            
-            for pattern, name in secret_patterns:
-                # Look for pattern = "value" or pattern: "value"
-                if f'{pattern} = "' in content or f'{pattern}: "' in content or f'{pattern}="' in content:
-                    # Check if it's not a placeholder
-                    if 'your_' not in content.lower() and 'example' not in content.lower():
-                        issues.append(f"Possible {name} found in: {filepath}")
-                        break
+            if validation_rules.get("check_secrets", True):
+                secret_patterns = [
+                    ('API_KEY', 'API key'),
+                    ('SECRET_KEY', 'Secret key'),
+                    ('PASSWORD', 'Password'),
+                    ('PRIVATE_KEY', 'Private key'),
+                    ('ACCESS_TOKEN', 'Access token'),
+                ]
+                
+                for pattern, name in secret_patterns:
+                    # Look for pattern = "value" or pattern: "value"
+                    if f'{pattern} = "' in content or f'{pattern}: "' in content or f'{pattern}="' in content:
+                        # Check if it's not a placeholder
+                        if 'your_' not in content.lower() and 'example' not in content.lower():
+                            issues.append(f"Possible {name} found in: {filepath}")
+                            break
         
         except Exception:
             # Skip files that can't be read (binary, etc.)
@@ -234,8 +251,12 @@ def validate_changes():
     return len(issues) == 0, issues
 
 
-def check_large_files():
-    """Check for large files (>10MB)"""
+def check_large_files(max_size_mb=None):
+    """Check for large files"""
+    if max_size_mb is None:
+        config = get_config()
+        max_size_mb = config.get("validation_rules", {}).get("max_file_size_mb", 10)
+    
     large_files = []
     changed_files = run_command("git diff --name-only HEAD")
     
@@ -247,7 +268,31 @@ def check_large_files():
     for filepath in files:
         if os.path.exists(filepath):
             size_mb = os.path.getsize(filepath) / (1024 * 1024)
-            if size_mb > 10:
+            if size_mb > max_size_mb:
                 large_files.append((filepath, size_mb))
     
     return large_files
+
+
+def run_formatter():
+    """Run code formatter if available"""
+    # Check for common formatters
+    formatters = {
+        'black': 'black .',
+        'prettier': 'prettier --write .',
+        'rustfmt': 'cargo fmt',
+        'gofmt': 'gofmt -w .',
+    }
+    
+    formatted = False
+    for formatter, command in formatters.items():
+        # Check if formatter is available
+        check_cmd = f"command -v {formatter}"
+        result = subprocess.run(check_cmd, shell=True, capture_output=True)
+        if result.returncode == 0:
+            print(Fore.CYAN + f"  → Running {formatter}...")
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                formatted = True
+    
+    return formatted
