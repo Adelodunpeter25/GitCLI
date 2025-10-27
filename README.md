@@ -16,8 +16,36 @@ GitCLI is a user-friendly command-line tool for Git that simplifies everyday ope
 
 ## Installation
 
+### Quick Install (Recommended)
+
+**One-line installer:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Adelodunpeter25/GitCLI/main/install.sh | bash
+```
+
+### Alternative Methods
+
+**Using pipx (recommended for Python users):**
+```bash
+pipx install gitcli-automation
+```
+
+**Using pip:**
 ```bash
 pip install gitcli-automation
+```
+
+**From source:**
+```bash
+git clone https://github.com/Adelodunpeter25/GitCLI.git
+cd GitCLI
+pip install -e .
+```
+
+### Uninstall
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Adelodunpeter25/GitCLI/main/uninstall.sh | bash
 ```
 
 ## Quick Start
